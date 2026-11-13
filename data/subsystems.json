@@ -1,0 +1,82 @@
+{
+  "GAIA": {
+    "name": "GAIA",
+    "role": "Central coordinator",
+    "description": "Routes requests to approved specialized subsystems.",
+    "status": "core",
+    "color": "cyan",
+    "symbol_concept": "central horizon ring"
+  },
+  "APOLLO": {
+    "name": "APOLLO",
+    "role": "Knowledge and learning",
+    "description": "Explains concepts and organizes learning material.",
+    "status": "active",
+    "color": "gold",
+    "symbol_concept": "radiant archive"
+  },
+  "HEPHAESTUS": {
+    "name": "HEPHAESTUS",
+    "role": "Engineering and subsystem workshop",
+    "description": "Designs configuration-only blueprints for proposed subsystems.",
+    "status": "active",
+    "color": "orange",
+    "symbol_concept": "forging geometry"
+  },
+  "MINERVA": {
+    "name": "MINERVA",
+    "role": "Analysis and problem solving",
+    "description": "Breaks complex questions into structured reasoning steps.",
+    "status": "active",
+    "color": "violet",
+    "symbol_concept": "layered compass"
+  },
+  "DEMETER": {
+    "name": "DEMETER",
+    "role": "Plants and ecosystems",
+    "description": "Provides educational information about plants and ecosystems.",
+    "status": "planned",
+    "color": "green",
+    "symbol_concept": "sprouting leaf"
+  },
+  "POSEIDON": {
+    "name": "POSEIDON",
+    "role": "Water and oceans",
+    "description": "Provides educational information about oceans and water systems.",
+    "status": "planned",
+    "color": "blue",
+    "symbol_concept": "flowing wave"
+  },
+  "AETHER": {
+    "name": "AETHER",
+    "role": "Atmosphere and weather science",
+    "description": "Explains atmospheric and climate systems.",
+    "status": "planned",
+    "color": "sky",
+    "symbol_concept": "layered wind"
+  },
+  "ARTEMIS": {
+    "name": "ARTEMIS",
+    "role": "Wildlife and biodiversity",
+    "description": "Provides educational information about wildlife and biodiversity.",
+    "status": "planned",
+    "color": "lime",
+    "symbol_concept": "wildlife track"
+  },
+  "ELEUTHIA": {
+    "name": "ELEUTHIA",
+    "role": "Human history and culture",
+    "description": "Organizes educational knowledge about human history and culture.",
+    "status": "planned",
+    "color": "rose",
+    "symbol_concept": "humanity archive"
+  },
+  "HADES": {
+    "name": "HADES",
+    "role": "Reliability and failure analysis",
+    "description": "Runs harmless scenario checks to identify weaknesses in plans and systems.",
+    "status": "planned",
+    "color": "red",
+    "symbol_concept": "contained eclipse"
+  }
+}
