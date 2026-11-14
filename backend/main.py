@@ -3,13 +3,18 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+
+# Load a private local .env before the provider reads its configuration.
+# Production deployments should inject secrets through their host's secret manager.
+load_dotenv(override=False)
 
 from gaia.ai.engine import GaiaAI
 from gaia.ai.provider import ProviderError
 
-app = FastAPI(title="GAIA — Heart of the World", version="1.0.1")
+app = FastAPI(title="GAIA — Heart of the World", version="1.0.2")
 ai = GaiaAI()
 
 
