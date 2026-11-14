@@ -11,15 +11,21 @@ from urllib.request import Request, urlopen
 
 
 class ProviderError(RuntimeError):
-    pass
+    """Safe, user-facing provider configuration or request error."""
 
 
 class OpenAICompatibleProvider:
     def __init__(self) -> None:
         self.api_key = os.getenv("GAIA_API_KEY", "").strip()
-        self.base_url = os.getenv("GAIA_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
+        self.base_url = os.getenv(
+            "GAIA_BASE_URL", "https://api.groq.com/openai/v1"
+        ).strip().rstrip("/")
         self.model = os.getenv("GAIA_MODEL", "").strip()
-        self.timeout = int(os.getenv("GAIA_TIMEOUT_SECONDS", "60"))
+        try:
+            configured_timeout = int(os.getenv("GAIA_TIMEOUT_SECONDS", "60"))
+        except ValueError:
+            configured_timeout = 60
+        self.timeout = min(max(configured_timeout, 5), 180)
 
     def ready(self) -> bool:
         return bool(self.api_key and self.model)
@@ -29,6 +35,8 @@ class OpenAICompatibleProvider:
             raise ProviderError("GAIA_API_KEY is not configured on the backend.")
         if not self.model:
             raise ProviderError("GAIA_MODEL is not configured on the backend.")
+        if not self.base_url.startswith(("https://", "http://")):
+            raise ProviderError("GAIA_BASE_URL must be an HTTP or HTTPS URL.")
 
         payload = json.dumps({
             "model": self.model,
@@ -49,12 +57,21 @@ class OpenAICompatibleProvider:
             with urlopen(request, timeout=self.timeout) as response:
                 result = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:500]
-            raise ProviderError(f"AI provider returned HTTP {exc.code}: {detail}") from exc
+            # Provider bodies can contain request metadata; don't echo them to clients.
+            raise ProviderError(
+                f"AI provider returned HTTP {exc.code}. Check backend provider settings."
+            ) from exc
         except (URLError, TimeoutError, json.JSONDecodeError) as exc:
-            raise ProviderError(f"Could not reach or read the AI provider: {exc}") from exc
+            raise ProviderError(
+                "Could not reach or read the AI provider. Check the backend URL and network."
+            ) from exc
 
         try:
-            return result["choices"][0]["message"]["content"].strip()
-        except (KeyError, IndexError, AttributeError, TypeError) as exc:
-            raise ProviderError("The provider response did not contain a chat completion.") from exc
+            content = result["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise ProviderError(
+                "The provider response did not contain a chat completion."
+            ) from exc
+        if not isinstance(content, str) or not content.strip():
+            raise ProviderError("The provider returned an empty chat completion.")
+        return content.strip()
