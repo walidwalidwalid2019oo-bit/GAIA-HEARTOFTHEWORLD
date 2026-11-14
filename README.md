@@ -1,50 +1,63 @@
 # GAIA — Heart of the World
 
-An original, modular AI coordination project inspired by the idea of a central intelligence coordinating specialized systems.
+An original, modular AI ecosystem prototype built around a central coordinator and specialized subsystems.
 
-> This is an independent project. It uses original names, code, interface elements, and symbols; it does not include ripped game assets.
+> Independent project. The website and app use original interface elements and symbolic motifs; no ripped Horizon game assets are included.
 
-## Vision
+## Current builds
 
-GAIA is the central coordinator. Specialized subsystems handle focused tasks, while GAIA routes requests, tracks subsystem status, and controls activation.
+### Android-friendly Python app (prototype)
 
-HEPHAESTUS is the subsystem workshop: it can propose new **configuration-only** subsystem blueprints. GAIA must validate a blueprint before it can be registered. Generated blueprints are data, not executable code.
-
-## First milestone
-
-- [x] Establish the project structure
-- [x] Add a simple terminal prototype
-- [x] Define the initial subsystem registry
-- [ ] Add persistent memory
-- [ ] Add a subsystem creation/approval workflow
-- [ ] Build the visual command interface
-- [ ] Add an optional AI provider (with API keys kept outside the repository)
-
-## Run
-
-Requires Python 3.10+.
+Run with Python 3.10+:
 
 ```bash
-python main.py
+python app.py
 ```
 
-No API key or external service is required for the first prototype.
+The app currently includes:
+- GAIA command-center menu
+- Seven core subsystem profiles
+- Registry status display
+- Local JSON memory vault for notes and activity
+- HEPHAESTUS blueprint drafting
+- GAIA approval/rejection queue
 
-## Safety and design principles
+The request router is currently rule-based. A real AI model/API is **not connected yet**. Blueprint approval records a review decision; it does not execute code or activate a real autonomous subsystem.
 
-- Subsystems have limited, explicit roles.
-- New subsystem blueprints are reviewed before activation.
-- No generated Python or shell code is executed.
-- API keys and private credentials must never be committed.
-- The interface will use original visual motifs rather than copied Horizon artwork.
+### Website
 
-## Project layout
+Open `website/index.html` locally, or enable GitHub Pages in the repository settings to publish it. The website is a frontend demonstration; its Forge creates browser-local draft blueprints only.
+
+## Android setup
+
+See [ANDROID_SETUP.md](ANDROID_SETUP.md) for phone instructions using Pydroid 3.
+
+## Architecture and safety
+
+- GAIA coordinates specialized subsystems.
+- HEPHAESTUS drafts declarative JSON blueprints.
+- GAIA reviews proposals before they can be considered for future registration.
+- Generated code is never executed.
+- API keys must stay out of GitHub and should be stored only in a secure local/backend configuration.
+
+## Project structure
 
 ```
+app.py
+main.py
 gaia/
+  __init__.py
   core.py
+  forge.py
+  memory.py
 data/
   subsystems.json
-main.py
+  # memory.json and blueprints.json are created locally on first run
+website/
+  index.html
+  styles.css
+  app.js
+ANDROID_SETUP.md
+README.md
 requirements.txt
 ```
