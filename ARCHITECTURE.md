@@ -7,11 +7,11 @@ Build an AI platform with one central model-driven coordinator, six specialist p
 ## Current architecture
 
 - **API layer:** FastAPI exposes health and chat endpoints.
-- **Central engine:** \`gaia.ai.engine.GaiaAI\` composes the central GAIA instruction with one specialist instruction.
+- **Central engine:** `gaia.ai.engine.GaiaAI` composes the central GAIA instruction with one specialist instruction.
 - **Specialists:** APOLLO, ARTEMIS, HEPHAESTUS, MINERVA, POSEIDON, and DEMETER are defined as distinct roles and routing hints.
 - **Model adapter:** OpenAI-compatible Chat Completions API. Configure the endpoint and model through environment variables.
 - **Memory:** SQLite conversation history, separated by conversation ID.
-- **Credential handling:** the backend loads a private local \`.env\` for development or receives secrets from its deployment host. The Android/browser client must never contain provider credentials.
+- **Credential handling:** the backend loads a private local `.env` for development or receives secrets from its deployment host. The Android/browser client must never contain provider credentials.
 
 ## Important current limitations
 
@@ -25,25 +25,25 @@ Build an AI platform with one central model-driven coordinator, six specialist p
 
 Install dependencies:
 
-\`\`\`bash
+```bash
 pip install -r requirements.txt
-\`\`\`
+```
 
-Copy \`.env.example\` to \`.env\` and replace the placeholder values privately:
+Copy `.env.example` to `.env` and replace the placeholder values privately:
 
-\`\`\`bash
+```bash
 cp .env.example .env
-\`\`\`
+```
 
-Set \`GAIA_API_KEY\`, \`GAIA_MODEL\`, and optionally \`GAIA_BASE_URL\` in that private file. Remote provider URLs must use HTTPS; plain HTTP is accepted only for localhost development. \`python-dotenv\` loads \`.env\` for the backend process. Never commit \`.env\`, paste a key into source code, or place a provider key in the Android app.
+Set `GAIA_API_KEY`, `GAIA_MODEL`, and optionally `GAIA_BASE_URL` in that private file. Remote provider URLs must use HTTPS; plain HTTP is accepted only for localhost development. `python-dotenv` loads `.env` for the backend process. Never commit `.env`, paste a key into source code, or place a provider key in the Android app.
 
 Start the service:
 
-\`\`\`bash
+```bash
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
-\`\`\`
+```
 
-Check \`GET /health\`, then send \`POST /chat\` with JSON containing \`message\` and optionally \`conversation_id\`. Health reports \`setup_required\` until a non-placeholder key and model plus a valid endpoint are configured.
+Check `GET /health`, then send `POST /chat` with JSON containing `message` and optionally `conversation_id`. Health reports `setup_required` until a non-placeholder key and model plus a valid endpoint are configured.
 
 ## Next milestones
 
