@@ -61,3 +61,8 @@ ANDROID_SETUP.md
 README.md
 requirements.txt
 ```
+
+
+## Advanced AI backend (foundation)
+
+A separate FastAPI backend now provides a real model connection through an OpenAI-compatible API adapter, specialist prompts, and SQLite conversation history. See [ARCHITECTURE.md](ARCHITECTURE.md). The backend is not deployed or connected to a live model yet; configure `GAIA_API_KEY`, `GAIA_BASE_URL`, and `GAIA_MODEL` privately on the backend. Never put a real key in GitHub or the Android app.
