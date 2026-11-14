@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from uuid import uuid4
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from gaia.ai.engine import GaiaAI
 from gaia.ai.provider import ProviderError
 
-app = FastAPI(title="GAIA — Heart of the World", version="1.0.0")
+app = FastAPI(title="GAIA — Heart of the World", version="1.0.1")
 ai = GaiaAI()
 
 
@@ -19,13 +20,22 @@ class ChatRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"service": "GAIA", "status": "online", "ai": ai.status()}
+    provider = ai.status()
+    ready = bool(provider.get("provider_configured"))
+    return {
+        "service": "GAIA",
+        "status": "ready" if ready else "setup_required",
+        "ai": provider,
+    }
 
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    conversation_id = request.conversation_id or str(uuid4())
+    message = request.message.strip()
+    if not message:
+        raise HTTPException(status_code=422, detail="Message cannot be blank.")
+    conversation_id = (request.conversation_id or "").strip() or str(uuid4())
     try:
-        return ai.respond(request.message.strip(), conversation_id)
+        return ai.respond(message, conversation_id)
     except ProviderError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
