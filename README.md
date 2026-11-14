@@ -10,9 +10,9 @@ An original, modular AI ecosystem prototype built around a central coordinator a
 
 Run with Python 3.10+:
 
-\`\`\`bash
+```bash
 python app.py
-\`\`\`
+```
 
 The app currently includes:
 - GAIA command-center menu
@@ -26,7 +26,7 @@ The Android request router is rule-based. A real AI model/API is **not connected
 
 ### Website
 
-Open \`website/index.html\` locally, or enable GitHub Pages in the repository settings to publish it. The website is a frontend demonstration; its Forge creates browser-local draft blueprints only.
+Open `website/index.html` locally, or enable GitHub Pages in the repository settings to publish it. The website is a frontend demonstration; its Forge creates browser-local draft blueprints only.
 
 ## Android setup
 
@@ -42,7 +42,7 @@ See [ANDROID_SETUP.md](ANDROID_SETUP.md) for phone instructions using Pydroid 3.
 
 ## Project structure
 
-\`\`\`
+```
 app.py
 main.py
 gaia/
@@ -67,10 +67,10 @@ ANDROID_SETUP.md
 README.md
 requirements.txt
 requirements-dev.txt
-\`\`\`
+```
 
 ## Advanced AI backend foundation
 
-A separate FastAPI backend now includes an OpenAI-compatible Chat Completions adapter, specialist prompts, and SQLite conversation history. It can be configured with \`GAIA_API_KEY\`, \`GAIA_BASE_URL\`, and \`GAIA_MODEL\`; see [ARCHITECTURE.md](ARCHITECTURE.md). Local development can use a private \`.env\` copied from \`.env.example\`.
+A separate FastAPI backend now includes an OpenAI-compatible Chat Completions adapter, specialist prompts, and SQLite conversation history. It can be configured with `GAIA_API_KEY`, `GAIA_BASE_URL`, and `GAIA_MODEL`; see [ARCHITECTURE.md](ARCHITECTURE.md). Local development can use a private `.env` copied from `.env.example`.
 
 The provider adapter has mocked unit tests, but a live provider request has **not** been verified. The backend is not deployed and is not yet protected for public multi-user access. Do not put a real key in GitHub, the Android app, or browser code.
