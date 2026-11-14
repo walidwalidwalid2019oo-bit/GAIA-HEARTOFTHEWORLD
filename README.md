@@ -10,9 +10,9 @@ An original, modular AI ecosystem prototype built around a central coordinator a
 
 Run with Python 3.10+:
 
-```bash
+\`\`\`bash
 python app.py
-```
+\`\`\`
 
 The app currently includes:
 - GAIA command-center menu
@@ -22,11 +22,11 @@ The app currently includes:
 - HEPHAESTUS blueprint drafting
 - GAIA approval/rejection queue
 
-The request router is currently rule-based. A real AI model/API is **not connected yet**. Blueprint approval records a review decision; it does not execute code or activate a real autonomous subsystem.
+The Android request router is rule-based. A real AI model/API is **not connected to this local app**. Blueprint approval records a review decision; it does not execute code or activate a real autonomous subsystem.
 
 ### Website
 
-Open `website/index.html` locally, or enable GitHub Pages in the repository settings to publish it. The website is a frontend demonstration; its Forge creates browser-local draft blueprints only.
+Open \`website/index.html\` locally, or enable GitHub Pages in the repository settings to publish it. The website is a frontend demonstration; its Forge creates browser-local draft blueprints only.
 
 ## Android setup
 
@@ -38,11 +38,11 @@ See [ANDROID_SETUP.md](ANDROID_SETUP.md) for phone instructions using Pydroid 3.
 - HEPHAESTUS drafts declarative JSON blueprints.
 - GAIA reviews proposals before they can be considered for future registration.
 - Generated code is never executed.
-- API keys must stay out of GitHub and should be stored only in a secure local/backend configuration.
+- API keys stay on the private backend, never in GitHub or the Android app.
 
 ## Project structure
 
-```
+\`\`\`
 app.py
 main.py
 gaia/
@@ -50,9 +50,15 @@ gaia/
   core.py
   forge.py
   memory.py
+  ai/
+    engine.py
+    provider.py
+    memory.py
+    specialists.py
+backend/
+  main.py
 data/
   subsystems.json
-  # memory.json and blueprints.json are created locally on first run
 website/
   index.html
   styles.css
@@ -60,9 +66,11 @@ website/
 ANDROID_SETUP.md
 README.md
 requirements.txt
-```
+requirements-dev.txt
+\`\`\`
 
+## Advanced AI backend foundation
 
-## Advanced AI backend (foundation)
+A separate FastAPI backend now includes an OpenAI-compatible Chat Completions adapter, specialist prompts, and SQLite conversation history. It can be configured with \`GAIA_API_KEY\`, \`GAIA_BASE_URL\`, and \`GAIA_MODEL\`; see [ARCHITECTURE.md](ARCHITECTURE.md). Local development can use a private \`.env\` copied from \`.env.example\`.
 
-A separate FastAPI backend now provides a real model connection through an OpenAI-compatible API adapter, specialist prompts, and SQLite conversation history. See [ARCHITECTURE.md](ARCHITECTURE.md). The backend is not deployed or connected to a live model yet; configure `GAIA_API_KEY`, `GAIA_BASE_URL`, and `GAIA_MODEL` privately on the backend. Never put a real key in GitHub or the Android app.
+The provider adapter has mocked unit tests, but a live provider request has **not** been verified. The backend is not deployed and is not yet protected for public multi-user access. Do not put a real key in GitHub, the Android app, or browser code.
