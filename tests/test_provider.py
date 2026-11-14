@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from unittest.mock import patch
 
 import pytest
@@ -41,6 +41,17 @@ def test_provider_requires_backend_key(monkeypatch):
         OpenAICompatibleProvider().chat([])
 
 
+def test_provider_rejects_example_placeholder_values(monkeypatch):
+    monkeypatch.setenv("GAIA_API_KEY", "put_your_provider_key_here")
+    monkeypatch.setenv("GAIA_MODEL", "put_a_model_id_here")
+
+    provider = OpenAICompatibleProvider()
+
+    assert provider.ready() is False
+    with pytest.raises(ProviderError, match="GAIA_API_KEY"):
+        provider.chat([])
+
+
 def test_provider_requires_model(monkeypatch):
     monkeypatch.setenv("GAIA_API_KEY", "test-secret")
     monkeypatch.delenv("GAIA_MODEL", raising=False)
@@ -67,7 +78,39 @@ def test_provider_does_not_return_raw_http_error_body(monkeypatch):
     assert "private provider detail" not in str(caught.value)
 
 
-def test_provider_clamps_timeout_and_rejects_non_http_url(monkeypatch):
+def test_provider_requires_https_for_remote_hosts(monkeypatch):
+    monkeypatch.setenv("GAIA_API_KEY", "test-secret")
+    monkeypatch.setenv("GAIA_MODEL", "test-model")
+    monkeypatch.setenv("GAIA_BASE_URL", "http://provider.example/v1")
+
+    provider = OpenAICompatibleProvider()
+
+    assert provider.ready() is False
+    with pytest.raises(ProviderError, match="HTTPS"):
+        provider.chat([])
+
+
+def test_provider_allows_http_for_local_development(monkeypatch):
+    monkeypatch.setenv("GAIA_API_KEY", "test-secret")
+    monkeypatch.setenv("GAIA_MODEL", "test-model")
+    monkeypatch.setenv("GAIA_BASE_URL", "http://127.0.0.1:9000/v1")
+
+    assert OpenAICompatibleProvider().ready() is True
+
+
+def test_provider_rejects_embedded_credentials_and_query_strings(monkeypatch):
+    monkeypatch.setenv("GAIA_API_KEY", "test-secret")
+    monkeypatch.setenv("GAIA_MODEL", "test-model")
+    monkeypatch.setenv("GAIA_BASE_URL", "https://user:pass@provider.example/v1?key=hidden")
+
+    provider = OpenAICompatibleProvider()
+
+    assert provider.ready() is False
+    with pytest.raises(ProviderError, match="embedded credentials"):
+        provider.chat([])
+
+
+def test_provider_clamps_timeout_and_rejects_invalid_url(monkeypatch):
     monkeypatch.setenv("GAIA_API_KEY", "test-secret")
     monkeypatch.setenv("GAIA_MODEL", "test-model")
     monkeypatch.setenv("GAIA_TIMEOUT_SECONDS", "999")
@@ -75,5 +118,25 @@ def test_provider_clamps_timeout_and_rejects_non_http_url(monkeypatch):
 
     provider = OpenAICompatibleProvider()
     assert provider.timeout == 180
-    with pytest.raises(ProviderError, match="HTTP or HTTPS"):
+    assert provider.ready() is False
+    with pytest.raises(ProviderError, match="absolute HTTP or HTTPS"):
         provider.chat([])
+
+
+def test_provider_handles_malformed_response_shape(monkeypatch):
+    provider = configured_provider(monkeypatch)
+    response = BytesIO(json.dumps({"choices": []}).encode())
+
+    with patch("gaia.ai.provider.urlopen", return_value=response):
+        with pytest.raises(ProviderError, match="did not contain"):
+            provider.chat([])
+
+
+def test_provider_handles_network_failure_without_leaking_details(monkeypatch):
+    provider = configured_provider(monkeypatch)
+
+    with patch("gaia.ai.provider.urlopen", side_effect=URLError("private network detail")):
+        with pytest.raises(ProviderError) as caught:
+            provider.chat([])
+
+    assert "private network detail" not in str(caught.value)
