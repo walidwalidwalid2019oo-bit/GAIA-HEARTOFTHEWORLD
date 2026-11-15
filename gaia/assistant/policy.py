@@ -8,11 +8,14 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import sqlite3
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from uuid import uuid4
+
+from sqlalchemy import Engine, text
+
+from gaia.storage import create_database_engine
 
 _ACTION_NAME = re.compile(r"[a-z][a-z0-9_.-]{1,79}")
 _DEFAULT_DB = Path("data/gaia.sqlite3")
