@@ -7,6 +7,10 @@ services:
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health/live
     envVars:
+      - key: GAIA_DATABASE_URL
+        sync: false
+      - key: GAIA_CORS_ORIGINS
+        sync: false
       - key: GAIA_API_KEY
         sync: false
       - key: GAIA_MODEL
