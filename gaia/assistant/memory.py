@@ -8,7 +8,7 @@ from gaia.storage import create_database_engine
 
 DB_PATH = Path("data/gaia.sqlite3")
 _CATEGORY = re.compile(r"[a-z][a-z0-9_-]{0,39}")
-_SECRET_PATTERN = re.compile(r"(?i)(?:api[_ -]?key|access[_ -]?token|password|recovery code|secret)\\s*[:=]")
+_SECRET_PATTERN = re.compile(r"(?i)(?:api[_ -]?key|access[_ -]?token|password|recovery code|secret)\s*[:=]")
 
 class MemoryFactError(ValueError):
     """A fact is invalid or appears to contain a credential."""
