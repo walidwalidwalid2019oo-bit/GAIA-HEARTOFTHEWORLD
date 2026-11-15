@@ -5,6 +5,7 @@ import hmac
 import os
 import re
 from uuid import uuid4
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
@@ -33,6 +34,7 @@ def _configured_api_token() -> str | None:
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=12000)
     conversation_id: str | None = Field(default=None, max_length=100)
+    specialist: Literal["GAIA", "APOLLO", "ARTEMIS", "HEPHAESTUS", "MINERVA", "POSEIDON", "DEMETER", "AETHER", "ELEUTHIA", "HADES"] | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -82,6 +84,6 @@ def chat(
     conversation_id = conversation_id or str(uuid4())
 
     try:
-        return ai.respond(message, conversation_id)
+        return ai.respond(message, conversation_id, request.specialist)
     except ProviderError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
