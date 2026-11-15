@@ -28,17 +28,40 @@ The Android request router is rule-based. A real AI model/API is **not connected
 
 Open `website/index.html` locally, or enable GitHub Pages in the repository settings to publish it. The website is a frontend demonstration; its Forge creates browser-local draft blueprints only.
 
+## Advanced AI backend
+
+A separate FastAPI backend includes:
+- A provider-independent OpenAI-compatible Chat Completions adapter
+- One central GAIA coordinator and six specialist perspectives
+- SQLite conversation history
+- Backend-only provider credentials
+- A required shared bearer token for the chat endpoint
+- Automated tests for API routes, specialist routing, SQLite persistence, and provider failures
+
+The specialists are prompt perspectives selected within one model call; they are not six independent autonomous agents.
+
+### Run locally
+
+Install dependencies, copy `.env.example` to a private `.env`, and configure `GAIA_API_KEY`, `GAIA_MODEL`, and a random `GAIA_API_TOKEN` (at least 32 characters). Generate a token with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Start the backend on localhost:
+
+```bash
+pip install -r requirements.txt
+uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full setup, request format, test command, and security boundaries.
+
+The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
+
 ## Android setup
 
 See [ANDROID_SETUP.md](ANDROID_SETUP.md) for phone instructions using Pydroid 3.
-
-## Architecture and safety
-
-- GAIA coordinates specialized subsystems.
-- HEPHAESTUS drafts declarative JSON blueprints.
-- GAIA reviews proposals before they can be considered for future registration.
-- Generated code is never executed.
-- API keys stay on the private backend, never in GitHub or the Android app.
 
 ## Project structure
 
@@ -46,7 +69,6 @@ See [ANDROID_SETUP.md](ANDROID_SETUP.md) for phone instructions using Pydroid 3.
 app.py
 main.py
 gaia/
-  __init__.py
   core.py
   forge.py
   memory.py
@@ -63,14 +85,11 @@ website/
   index.html
   styles.css
   app.js
-ANDROID_SETUP.md
-README.md
-requirements.txt
-requirements-dev.txt
+tests/
+  test_api.py
+  test_core.py
+  test_forge.py
+  test_memory.py
+  test_provider.py
+  test_specialists.py
 ```
-
-## Advanced AI backend foundation
-
-A separate FastAPI backend now includes an OpenAI-compatible Chat Completions adapter, specialist prompts, and SQLite conversation history. It can be configured with `GAIA_API_KEY`, `GAIA_BASE_URL`, and `GAIA_MODEL`; see [ARCHITECTURE.md](ARCHITECTURE.md). Local development can use a private `.env` copied from `.env.example`.
-
-The provider adapter has mocked unit tests, but a live provider request has **not** been verified. The backend is not deployed and is not yet protected for public multi-user access. Do not put a real key in GitHub, the Android app, or browser code.
