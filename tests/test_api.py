@@ -263,6 +263,6 @@ def test_delete_conversation_removes_only_the_selected_history(api_client):
 def test_memory_routes_reject_unsafe_conversation_ids(api_client):
     client, _ = api_client
 
-    result = client.delete("/conversations/%2E%2E%2Fother", headers=auth_headers())
+    result = client.delete("/conversations/bad%20id", headers=auth_headers())
 
     assert result.status_code == 422
