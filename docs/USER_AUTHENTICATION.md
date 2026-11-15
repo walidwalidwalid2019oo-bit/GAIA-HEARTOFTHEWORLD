@@ -7,8 +7,16 @@ That is suitable only for private single-owner testing. It must never be
 embedded in the website JavaScript, an Android APK, or another distributed
 client. The current conversation and fact tables are not scoped to accounts.
 
-This document is a design checkpoint, not a claim that account authentication
-has been implemented.
+The repository now contains an internal `UserAuth` foundation in
+`gaia.assistant.auth`: it validates account identifiers, stores scrypt password
+hashes, issues opaque bearer sessions while storing only SHA-256 token hashes,
+and supports expiry/revocation. Unit tests cover these primitives.
+
+This is not production account authentication: no HTTP routes expose these
+operations, no refresh-token rotation or email verification exists, and
+private records are not yet scoped to user IDs. The shared development token
+still protects the current API. This document remains the required design for
+finishing the work safely.
 
 ## Required design
 
@@ -40,7 +48,8 @@ has been implemented.
 
 ## Implementation order
 
-- Add user and session tables to the durable database layer.
+- [x] Add initial user and revocable-session tables to the shared database layer.
+- [ ] Add public account/session routes only after data isolation is enforced.
 - Add registration/login/logout/refresh with strict validation and tests.
 - Add owner IDs and ownership filters to conversation history and explicit
   long-term memory, including cross-account isolation tests.
@@ -52,6 +61,7 @@ has been implemented.
 
 ## Not implemented yet
 
-No account registration, password hashing, refresh-token rotation, user
-ownership columns, per-user route filtering, login rate limiting, or
-production session management has been implemented by this checkpoint.
+Password hashing and opaque-session storage primitives exist, but no account
+registration/login HTTP routes, refresh-token rotation, user ownership columns,
+per-user route filtering, login rate limiting, email verification, or production
+session management has been implemented by this checkpoint.
