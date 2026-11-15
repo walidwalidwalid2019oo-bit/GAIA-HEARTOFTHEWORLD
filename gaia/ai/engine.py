@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from gaia.ai.memory import ConversationMemory
+from gaia.storage import database_backend
 from gaia.ai.provider import OpenAICompatibleProvider
 from gaia.ai.specialists import SPECIALISTS, choose_specialist
 
@@ -16,7 +17,8 @@ class GaiaAI:
             "provider_configured": self.provider.ready(),
             "model": self.provider.model or None,
             "specialists": list(SPECIALISTS.keys()),
-            "memory": "sqlite",
+            "memory": "persistent",
+            "database_backend": database_backend(self.memory.engine),
         }
 
     def respond(
