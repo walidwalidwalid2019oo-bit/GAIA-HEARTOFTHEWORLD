@@ -74,7 +74,7 @@ async function checkBackend() {
   } else {
    backendStatus.textContent = "API REACHED / SETUP REQUIRED";
   }
-  localStorage.setItem(BACKEND_URL_KEY, base);
+  try { localStorage.setItem(BACKEND_URL_KEY, base); } catch (_) { /* Storage is optional. */ }
  } catch (error) {
   backendStatus.textContent = error.name === "AbortError" ? "CONNECTION TIMED OUT" : "BACKEND UNREACHABLE / CHECK URL AND CORS";
  } finally {
@@ -86,5 +86,5 @@ async function checkBackend() {
 backendConnect.addEventListener("click", checkBackend);
 try {
  const savedBackendUrl = localStorage.getItem(BACKEND_URL_KEY);
- if (savedBackendUrl) backendUrlInput.value = savedBackendUrl;
+ if (savedBackendUrl) { backendUrlInput.value = savedBackendUrl; checkBackend(); }
 } catch (_) { /* Private browsing may disable local storage. */ }
