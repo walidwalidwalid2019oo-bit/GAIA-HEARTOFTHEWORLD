@@ -2,13 +2,13 @@
 
 ## Goal
 
-Build an AI platform with one central model-driven coordinator, six specialist perspectives, persistent conversation memory, and a permission-controlled tool layer.
+Build an AI platform with one central model-driven coordinator, nine specialist perspectives, persistent conversation memory, and a permission-controlled tool layer.
 
 ## Current architecture
 
 - **API layer:** FastAPI exposes health and chat endpoints.
 - **Central engine:** `gaia.ai.engine.GaiaAI` composes the central GAIA instruction with one specialist instruction.
-- **Specialists:** APOLLO, ARTEMIS, HEPHAESTUS, MINERVA, POSEIDON, and DEMETER are defined as distinct roles and deterministic routing hints.
+- **Specialists:** APOLLO, ARTEMIS, HEPHAESTUS, MINERVA, POSEIDON, DEMETER, AETHER, ELEUTHIA, and HADES are defined as specialist roles. The authenticated chat API accepts an optional explicit specialist selection; otherwise it uses deterministic routing.
 - **Model adapter:** OpenAI-compatible Chat Completions API. Configure the endpoint and model through environment variables.
 - **Memory:** SQLite conversation history, separated by conversation ID.
 - **Credential handling:** the backend loads a private local `.env` for development or receives secrets from its deployment host. The Android/browser client must never contain provider credentials.
@@ -16,7 +16,7 @@ Build an AI platform with one central model-driven coordinator, six specialist p
 
 ## Important current limitations
 
-- This is one model call with a selected specialist prompt, not six independent models or autonomous agents.
+- This is one model call with a selected specialist prompt, not nine independent models or autonomous agents.
 - The provider adapter is tested with mocked responses, but no live provider request has been verified.
 - No external tools are enabled yet. The model cannot execute code, browse, send messages, or control devices.
 - Conversation history is stored locally in SQLite on the backend. It is not semantic/vector memory yet.
