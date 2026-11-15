@@ -61,6 +61,12 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for setup, API routes, tests, and securit
 
 The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
 
+### Hosting preparation (staging only)
+
+A Render Python/FastAPI staging blueprint is in [render.yaml](render.yaml). Read [the Render deployment plan](docs/RENDER_DEPLOYMENT.md) before using it: the current SQLite database is lost when a Render Free service spins down or restarts, so only disposable test data is acceptable until durable storage is implemented. The [GAIA wake-up UX plan](docs/WAKEUP_UX.md) specifies an honest elapsed-time indicator while the backend wakes; it does not use a fake 15-minute countdown.
+
+**Public release target: V19.** This staging setup is not a public release.
+
 ## Android setup
 
 See [ANDROID_SETUP.md](ANDROID_SETUP.md) for phone instructions using Pydroid 3.
