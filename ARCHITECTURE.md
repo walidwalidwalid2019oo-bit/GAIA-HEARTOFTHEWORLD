@@ -2,24 +2,34 @@
 
 ## Goal
 
-Build an AI platform with one central model-driven coordinator, six specialist perspectives, persistent conversation memory, and a permission-controlled tool layer.
+Build an AI platform with one central model-driven coordinator, nine specialist perspectives, persistent conversation memory, and a permission-controlled tool layer.
 
 ## Current architecture
 
-- **API layer:** FastAPI exposes health and chat endpoints.
+- **API layer:** FastAPI exposes health, chat, and authenticated conversation-memory endpoints.
 - **Central engine:** `gaia.ai.engine.GaiaAI` composes the central GAIA instruction with one specialist instruction.
-- **Specialists:** APOLLO, ARTEMIS, HEPHAESTUS, MINERVA, POSEIDON, and DEMETER are defined as distinct roles and deterministic routing hints.
+- **Specialists:** APOLLO, ARTEMIS, HEPHAESTUS, MINERVA, POSEIDON, DEMETER, AETHER, ELEUTHIA, and HADES are defined as specialist roles. The authenticated chat API accepts an optional explicit specialist selection; otherwise it uses deterministic routing.
 - **Model adapter:** OpenAI-compatible Chat Completions API. Configure the endpoint and model through environment variables.
-- **Memory:** SQLite conversation history, separated by conversation ID.
+- **Memory:** SQLite conversation history, separated by conversation ID. The API can list recent conversation summaries, read one conversation, and delete one conversation.
 - **Credential handling:** the backend loads a private local `.env` for development or receives secrets from its deployment host. The Android/browser client must never contain provider credentials.
-- **API access:** `POST /chat` requires a backend bearer token (`GAIA_API_TOKEN`) of at least 32 characters. Comparisons use constant-time comparison. The token is never returned by the health endpoint.
+- **API access:** chat and memory endpoints require a backend bearer token (`GAIA_API_TOKEN`) of at least 32 characters. Comparisons use constant-time comparison. The token is never returned by the health endpoint.
+
+## API routes
+
+- `GET /health` — service and provider configuration status; does not reveal secrets.
+- `POST /chat` — send a message, optionally selecting a conversation ID and specialist.
+- `GET /conversations?limit=50` — list recent conversation summaries (limit 1–100).
+- `GET /conversations/{conversation_id}` — inspect the full saved message history for one conversation.
+- `DELETE /conversations/{conversation_id}` — permanently delete one conversation's messages from the SQLite database.
+
+All conversation-memory routes require the same bearer authentication as chat. Conversation IDs are restricted to a safe ASCII character set. These routes currently operate on the single backend database; they are not yet isolated by individual user accounts.
 
 ## Important current limitations
 
-- This is one model call with a selected specialist prompt, not six independent models or autonomous agents.
+- This is one model call with a selected specialist prompt, not nine independent models or autonomous agents.
 - The provider adapter is tested with mocked responses, but no live provider request has been verified.
 - No external tools are enabled yet. The model cannot execute code, browse, send messages, or control devices.
-- Conversation history is stored locally in SQLite on the backend. It is not semantic/vector memory yet.
+- Conversation history is stored locally in SQLite on the backend. It is not semantic/vector memory yet, and user-approved long-term facts are not implemented.
 - The API has not been deployed. Authentication here is a simple shared development token, not production user authentication. Add per-user identity, rate limits, abuse protection, TLS termination, and operational monitoring before public hosting.
 
 ## Run locally
@@ -61,12 +71,13 @@ python -m pytest -q
 - The local server binds to `127.0.0.1` by default. Do not expose it publicly as-is.
 - The provider adapter validates remote HTTPS URLs, rejects embedded URL credentials, bounds timeouts, and caps response size.
 - The API validates request size and conversation ID syntax. SQLite queries use parameters.
+- Deleting a conversation is destructive and permanent; the client should ask for confirmation before calling the delete route.
 - Generated code is not executed; HEPHAESTUS currently produces design guidance only.
 
 ## Next milestones
 
 1. Verify one real provider request using a privately configured test key.
-2. Add explicit memory controls: inspect, delete, and opt-in facts.
+2. Add explicit, opt-in long-term facts with inspect, edit, and delete controls.
 3. Add a typed tool registry with per-tool permissions and user confirmation for consequential actions.
 4. Add a mobile-friendly client that talks only to an authenticated GAIA backend.
 5. Design per-user authentication, rate limits, deployment configuration, and abuse protection before public hosting.

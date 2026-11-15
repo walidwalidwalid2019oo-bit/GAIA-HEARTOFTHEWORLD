@@ -12,6 +12,9 @@ from gaia.ai.specialists import SPECIALISTS, choose_specialist
         ("Compare these options and make a plan", "MINERVA"),
         ("Describe how ocean currents move", "POSEIDON"),
         ("How do I care for garden plants?", "DEMETER"),
+        ("What causes thunderstorms and strong winds?", "AETHER"),
+        ("Compare archaeological artifacts from this civilization", "ELEUTHIA"),
+        ("Assess the reliability risks and possible failures", "HADES"),
         ("Hello GAIA, what can you do?", "GAIA"),
     ],
 )
@@ -25,7 +28,7 @@ def test_routing_uses_whole_words_not_accidental_substrings():
 
 
 def test_every_specialist_has_a_role_focus_and_instruction():
-    expected = {"GAIA", "APOLLO", "ARTEMIS", "HEPHAESTUS", "MINERVA", "POSEIDON", "DEMETER"}
+    expected = {"GAIA", "APOLLO", "ARTEMIS", "HEPHAESTUS", "MINERVA", "POSEIDON", "DEMETER", "AETHER", "ELEUTHIA", "HADES"}
 
     assert set(SPECIALISTS) == expected
     for specialist in SPECIALISTS.values():

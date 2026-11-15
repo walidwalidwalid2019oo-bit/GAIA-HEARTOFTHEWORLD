@@ -32,13 +32,14 @@ Open `website/index.html` locally, or enable GitHub Pages in the repository sett
 
 A separate FastAPI backend includes:
 - A provider-independent OpenAI-compatible Chat Completions adapter
-- One central GAIA coordinator and six specialist perspectives
+- One central GAIA coordinator and nine specialist perspectives
 - SQLite conversation history
 - Backend-only provider credentials
-- A required shared bearer token for the chat endpoint
+- A required shared bearer token for chat and conversation-memory endpoints
+- Authenticated endpoints to list, inspect, and delete saved conversations
 - Automated tests for API routes, specialist routing, SQLite persistence, and provider failures
 
-The specialists are prompt perspectives selected within one model call; they are not six independent autonomous agents.
+The specialists are selectable prompt perspectives within one configured model; they are not separate model instances or autonomous agents.
 
 ### Run locally
 
@@ -55,7 +56,7 @@ pip install -r requirements.txt
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full setup, request format, test command, and security boundaries.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full setup, request formats, memory-management routes, test command, and security boundaries.
 
 The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
 

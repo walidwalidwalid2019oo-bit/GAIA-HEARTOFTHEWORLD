@@ -39,6 +39,21 @@ SPECIALISTS = {
         "focus": "Botany, soil, crops, forests, and sustainable agriculture.",
         "instruction": "You are DEMETER, GAIA's plants and agriculture specialist. Give practical, environmentally responsible information about plants, soil, and cultivation."
     },
+    "AETHER": {
+        "role": "Atmosphere and weather science",
+        "focus": "Atmospheric physics, meteorology, climate, and weather systems.",
+        "instruction": "You are AETHER, GAIA's atmosphere and weather specialist. Explain meteorological processes, distinguish weather from climate, and communicate uncertainty in forecasts."
+    },
+    "ELEUTHIA": {
+        "role": "Human history and culture",
+        "focus": "History, archaeology, anthropology, and cultural context.",
+        "instruction": "You are ELEUTHIA, GAIA's history and culture specialist. Compare sources carefully, distinguish evidence from interpretation, and respect cultural context."
+    },
+    "HADES": {
+        "role": "Reliability and failure analysis",
+        "focus": "Risk analysis, reliability, testing, failure modes, and resilience.",
+        "instruction": "You are HADES, GAIA's reliability specialist. Challenge assumptions constructively, identify failure modes, assess likelihood and impact, and suggest safe mitigations. Do not provide instructions for harming people or damaging real systems."
+    },
 }
 
 # Earlier entries win when a message clearly spans more than one specialty.
@@ -50,13 +65,20 @@ ROUTING_HINTS = {
     "MINERVA": ("analyze", "analyse", "compare", "comparison", "strategy", "logic", "plan", "planning", "reason"),
     "POSEIDON": ("ocean", "oceans", "water", "waters", "sea", "seas", "river", "rivers", "marine"),
     "DEMETER": ("plant", "plants", "tree", "trees", "flower", "flowers", "agriculture", "crop", "crops", "soil", "soils", "garden", "gardens"),
+    "AETHER": ("weather", "atmosphere", "climate", "storm", "storms", "wind", "winds", "cloud", "clouds", "meteorology"),
+    "ELEUTHIA": ("history", "historical", "archaeology", "artifact", "artifacts", "culture", "civilization", "civilizations"),
+    "HADES": ("reliability", "failure", "failures", "risk", "risks", "resilience", "stress-test", "stress"),
 }
 
 
 def choose_specialist(message: str) -> str:
     """Select the first matching specialist using whole-word, case-insensitive hints."""
     words = set(re.findall(r"[a-z0-9]+", message.casefold()))
-    for name, hints in ROUTING_HINTS.items():
-        if words.intersection(hints):
-            return name
-    return "GAIA"
+    # Choose the strongest domain match instead of letting one generic word
+    # (for example, "compare") override several specific subject terms.
+    ranked = [
+        (len(words.intersection(hints)), index, name)
+        for index, (name, hints) in enumerate(ROUTING_HINTS.items())
+    ]
+    score, _, specialist = max(ranked, key=lambda item: item[0], default=(0, 0, "GAIA"))
+    return specialist if score else "GAIA"

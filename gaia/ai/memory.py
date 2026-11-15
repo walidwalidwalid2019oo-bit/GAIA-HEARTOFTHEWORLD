@@ -39,3 +39,52 @@ class ConversationMemory:
                 (conversation_id, limit),
             ).fetchall()
         return [{"role": role, "content": content} for role, content in reversed(rows)]
+
+    def conversations(self, limit: int = 50) -> list[dict[str, object]]:
+        """Return recent conversation summaries without loading full histories."""
+        with self._connect() as db:
+            rows = db.execute(
+                """
+                SELECT m.conversation_id, COUNT(*) AS message_count,
+                       MAX(m.created_at) AS updated_at,
+                       (SELECT latest.content FROM messages AS latest
+                        WHERE latest.conversation_id = m.conversation_id
+                        ORDER BY latest.id DESC LIMIT 1) AS last_message
+                FROM messages AS m
+                GROUP BY m.conversation_id
+                ORDER BY MAX(m.id) DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "conversation_id": conversation_id,
+                "message_count": message_count,
+                "updated_at": updated_at,
+                "last_message": last_message,
+            }
+            for conversation_id, message_count, updated_at, last_message in rows
+        ]
+
+    def get_conversation(self, conversation_id: str) -> list[dict[str, str]]:
+        """Return a complete conversation in chronological order."""
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT role, content, created_at FROM messages "
+                "WHERE conversation_id=? ORDER BY id ASC",
+                (conversation_id,),
+            ).fetchall()
+        return [
+            {"role": role, "content": content, "created_at": created_at}
+            for role, content, created_at in rows
+        ]
+
+    def delete_conversation(self, conversation_id: str) -> bool:
+        """Delete one conversation and report whether any messages existed."""
+        with self._connect() as db:
+            cursor = db.execute(
+                "DELETE FROM messages WHERE conversation_id=?",
+                (conversation_id,),
+            )
+            return cursor.rowcount > 0
