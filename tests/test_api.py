@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import backend.main as api_module
+from gaia.ai.memory import ConversationMemory
 from gaia.ai.provider import ProviderError
 
 
@@ -20,6 +21,7 @@ class FakeAI:
         self.ready = ready
         self.calls = []
         self.selected_specialists = []
+        self.memory = None
 
     def status(self):
         return {"provider_configured": self.ready, "memory": "sqlite"}
@@ -33,9 +35,10 @@ class FakeAI:
 
 
 @pytest.fixture
-def api_client(monkeypatch):
+def api_client(monkeypatch, tmp_path):
     monkeypatch.setenv("GAIA_API_TOKEN", "test-access-token-" + ("x" * 32))
     fake = FakeAI()
+    fake.memory = ConversationMemory(tmp_path / "gaia-test.sqlite3")
     monkeypatch.setattr(api_module, "ai", fake)
     with TestClient(api_module.app) as client:
         yield client, fake
@@ -208,3 +211,58 @@ def test_chat_maps_provider_failure_to_service_unavailable(api_client, monkeypat
 
     assert result.status_code == 503
     assert result.json()["detail"] == "provider not configured"
+
+
+def test_memory_routes_require_authentication(api_client):
+    client, fake = api_client
+    fake.memory.add("session-a", "user", "Private message")
+
+    result = client.get("/conversations")
+
+    assert result.status_code == 401
+    assert client.get("/conversations", headers=auth_headers()).status_code == 200
+
+
+def test_list_and_read_conversations(api_client):
+    client, fake = api_client
+    fake.memory.add("session-a", "user", "Hello")
+    fake.memory.add("session-a", "assistant", "Welcome")
+    fake.memory.add("session-b", "user", "Another chat")
+
+    listing = client.get("/conversations?limit=1", headers=auth_headers())
+    detail = client.get("/conversations/session-a", headers=auth_headers())
+
+    assert listing.status_code == 200
+    assert len(listing.json()["conversations"]) == 1
+    assert listing.json()["conversations"][0]["conversation_id"] == "session-b"
+    assert detail.status_code == 200
+    assert [item["content"] for item in detail.json()["messages"]] == ["Hello", "Welcome"]
+
+
+def test_read_conversation_returns_not_found_for_unknown_id(api_client):
+    client, _ = api_client
+
+    result = client.get("/conversations/missing", headers=auth_headers())
+
+    assert result.status_code == 404
+
+
+def test_delete_conversation_removes_only_the_selected_history(api_client):
+    client, fake = api_client
+    fake.memory.add("session-a", "user", "Remove this")
+    fake.memory.add("session-b", "user", "Keep this")
+
+    result = client.delete("/conversations/session-a", headers=auth_headers())
+
+    assert result.status_code == 200
+    assert result.json()["deleted"] is True
+    assert fake.memory.get_conversation("session-a") == []
+    assert fake.memory.get_conversation("session-b")[0]["content"] == "Keep this"
+
+
+def test_memory_routes_reject_unsafe_conversation_ids(api_client):
+    client, _ = api_client
+
+    result = client.delete("/conversations/%2E%2E%2Fother", headers=auth_headers())
+
+    assert result.status_code == 422
