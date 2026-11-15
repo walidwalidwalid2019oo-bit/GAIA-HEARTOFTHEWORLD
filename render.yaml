@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: gaia-backend-staging
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: GAIA_API_KEY
+        sync: false
+      - key: GAIA_MODEL
+        sync: false
+      - key: GAIA_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: GAIA_API_TOKEN
+        generateValue: true
+      - key: GAIA_TIMEOUT_SECONDS
+        value: "60"
