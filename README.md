@@ -32,13 +32,13 @@ Open `website/index.html` locally, or enable GitHub Pages in the repository sett
 
 A separate FastAPI backend includes:
 - A provider-independent OpenAI-compatible Chat Completions adapter
-- One central GAIA coordinator and six specialist perspectives
+- One central GAIA coordinator and nine specialist perspectives
 - SQLite conversation history
 - Backend-only provider credentials
 - A required shared bearer token for the chat endpoint
 - Automated tests for API routes, specialist routing, SQLite persistence, and provider failures
 
-The specialists are prompt perspectives selected within one model call; they are not six independent autonomous agents.
+The specialists are selectable prompt perspectives within one configured model; they are not separate model instances or autonomous agents.
 
 ### Run locally
 
