@@ -80,5 +80,5 @@ def choose_specialist(message: str) -> str:
         (len(words.intersection(hints)), index, name)
         for index, (name, hints) in enumerate(ROUTING_HINTS.items())
     ]
-    score, _, specialist = max(ranked, default=(0, 0, "GAIA"))
+    score, _, specialist = max(ranked, key=lambda item: item[0], default=(0, 0, "GAIA"))
     return specialist if score else "GAIA"
