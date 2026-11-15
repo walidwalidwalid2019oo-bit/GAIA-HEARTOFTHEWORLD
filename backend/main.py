@@ -78,8 +78,15 @@ class MemoryFactDeleteRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+@app.get("/health/live")
+def liveness():
+    """Cheap process-liveness check; deliberately independent of AI credentials."""
+    return {"service": "GAIA", "status": "alive"}
+
+
 @app.get("/health")
 def health():
+    """Readiness check for the API, provider configuration, and access control."""
     provider = ai.status()
     auth_configured = _configured_api_token() is not None
     ready = bool(provider.get("provider_configured")) and auth_configured
@@ -102,7 +109,7 @@ def chat(
     message = request.message.strip()
     if not message:
         raise HTTPException(status_code=422, detail="Message cannot be blank.")
-    if any(ord(char) < 32 and char not in "\n\r\t" for char in message):
+    if any(ord(char) < 32 and char not in "\\n\\r\\t" for char in message):
         raise HTTPException(status_code=422, detail="Message contains unsupported control characters.")
 
     conversation_id = (request.conversation_id or "").strip()
