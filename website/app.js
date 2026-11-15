@@ -46,7 +46,7 @@ function normalizeBackendUrl(value) {
  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
   throw new Error("Use HTTPS for remote GAIA servers.");
  }
- return parsed.origin + parsed.pathname.replace(/\\/+$/, "");
+ return parsed.origin + parsed.pathname.replace(/\/+$/, "");
 }
 
 async function checkBackend() {
