@@ -17,7 +17,7 @@ class GaiaAI:
             "provider_configured": self.provider.ready(),
             "model": self.provider.model or None,
             "specialists": list(SPECIALISTS.keys()),
-            "memory": "persistent",
+            "memory": "database_backed",
             "database_backend": database_backend(self.memory.engine),
         }
 
