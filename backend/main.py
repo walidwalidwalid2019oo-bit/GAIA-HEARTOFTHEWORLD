@@ -109,7 +109,7 @@ def chat(
     message = request.message.strip()
     if not message:
         raise HTTPException(status_code=422, detail="Message cannot be blank.")
-    if any(ord(char) < 32 and char not in "\\n\\r\\t" for char in message):
+    if any(ord(char) < 32 and char not in "\n\r\t" for char in message):
         raise HTTPException(status_code=422, detail="Message contains unsupported control characters.")
 
     conversation_id = (request.conversation_id or "").strip()
