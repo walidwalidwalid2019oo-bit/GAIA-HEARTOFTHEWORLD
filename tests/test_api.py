@@ -48,6 +48,17 @@ def auth_headers():
     return {"Authorization": "Bearer " + "test-access-token-" + ("x" * 32)}
 
 
+def test_liveness_is_available_without_provider_or_api_credentials(api_client, monkeypatch):
+    client, _ = api_client
+    monkeypatch.delenv("GAIA_API_TOKEN")
+    monkeypatch.setattr(api_module, "ai", FakeAI(ready=False))
+
+    result = client.get("/health/live")
+
+    assert result.status_code == 200
+    assert result.json() == {"service": "GAIA", "status": "alive"}
+
+
 def test_health_reports_ready_only_when_provider_and_api_auth_are_configured(api_client):
     client, _ = api_client
 
