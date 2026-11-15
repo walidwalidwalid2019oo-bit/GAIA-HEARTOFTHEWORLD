@@ -34,12 +34,13 @@ A separate FastAPI backend includes:
 - A provider-independent OpenAI-compatible Chat Completions adapter
 - One central GAIA coordinator and nine specialist perspectives
 - SQLite conversation history
+- Separate, explicitly saved long-term memory facts
+- A persistent, exact-argument, single-use action approval foundation
 - Backend-only provider credentials
-- A required shared bearer token for chat and conversation-memory endpoints
-- Authenticated endpoints to list, inspect, and delete saved conversations
-- Automated tests for API routes, specialist routing, SQLite persistence, and provider failures
+- A required shared bearer token for chat and private memory endpoints
+- Automated tests for API routes, specialist routing, SQLite persistence, policy decisions, and provider failures
 
-The specialists are selectable prompt perspectives within one configured model; they are not separate model instances or autonomous agents.
+The specialists are selectable prompt perspectives within one configured model; they are not separate model instances or autonomous agents. The action-policy module is groundwork only: no external action handlers or unrestricted device controls are enabled.
 
 ### Run locally
 
@@ -56,7 +57,7 @@ pip install -r requirements.txt
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full setup, request formats, memory-management routes, test command, and security boundaries.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for setup, API routes, tests, and security boundaries. See [ASSISTANT_FOUNDATIONS.md](docs/ASSISTANT_FOUNDATIONS.md) for the new memory and action-policy design.
 
 The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
 
@@ -78,6 +79,9 @@ gaia/
     provider.py
     memory.py
     specialists.py
+  assistant/
+    memory.py
+    policy.py
 backend/
   main.py
 data/
@@ -88,6 +92,8 @@ website/
   app.js
 tests/
   test_api.py
+  test_assistant_api.py
+  test_assistant_foundations.py
   test_core.py
   test_forge.py
   test_memory.py

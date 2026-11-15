@@ -17,9 +17,11 @@ load_dotenv(override=False)
 
 from gaia.ai.engine import GaiaAI
 from gaia.ai.provider import ProviderError
+from gaia.assistant.memory import LongTermMemory, MemoryFactError
 
-app = FastAPI(title="GAIA — Heart of the World", version="1.2.0")
+app = FastAPI(title="GAIA — Heart of the World", version="1.3.0")
 ai = GaiaAI()
+long_term_memory = LongTermMemory()
 _CONVERSATION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,99}")
 
 
@@ -63,6 +65,19 @@ class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class MemoryFactCreateRequest(BaseModel):
+    category: str = Field(default="general", min_length=1, max_length=40, pattern=r"^[a-z][a-z0-9_-]{0,39}$")
+    content: str = Field(min_length=1, max_length=2000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MemoryFactDeleteRequest(BaseModel):
+    confirm: bool
+
+    model_config = ConfigDict(extra="forbid")
+
+
 @app.get("/health")
 def health():
     provider = ai.status()
@@ -73,6 +88,7 @@ def health():
         "status": "ready" if ready else "setup_required",
         "api_auth_configured": auth_configured,
         "ai": provider,
+        "long_term_memory": "sqlite_explicit_facts",
     }
 
 
@@ -135,3 +151,43 @@ def delete_conversation(
     if not ai.memory.delete_conversation(conversation_id):
         raise HTTPException(status_code=404, detail="Conversation not found.")
     return {"deleted": True, "conversation_id": conversation_id}
+
+
+@app.get("/memory/facts")
+def list_memory_facts(
+    authorization: str | None = Header(default=None),
+    category: str | None = Query(default=None, max_length=40, pattern=r"^[a-z][a-z0-9_-]{0,39}$"),
+    limit: int = Query(default=100, ge=1, le=200),
+):
+    """List deliberately saved long-term facts, separate from chat transcripts."""
+    _require_api_access(authorization)
+    return {"facts": long_term_memory.list(category=category, limit=limit)}
+
+
+@app.post("/memory/facts")
+def create_memory_fact(
+    request: MemoryFactCreateRequest,
+    authorization: str | None = Header(default=None),
+):
+    """Save a fact only after an explicit authenticated request."""
+    _require_api_access(authorization)
+    try:
+        fact = long_term_memory.add(request.category, request.content)
+    except MemoryFactError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"saved": True, "fact": fact}
+
+
+@app.delete("/memory/facts/{fact_id}")
+def delete_memory_fact(
+    fact_id: str,
+    request: MemoryFactDeleteRequest,
+    authorization: str | None = Header(default=None),
+):
+    """Delete one long-term fact only when the client explicitly confirms."""
+    _require_api_access(authorization)
+    if request.confirm is not True:
+        raise HTTPException(status_code=400, detail="Explicit confirmation is required.")
+    if not long_term_memory.delete(fact_id):
+        raise HTTPException(status_code=404, detail="Memory fact not found.")
+    return {"deleted": True, "fact_id": fact_id}
