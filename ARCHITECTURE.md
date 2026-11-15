@@ -15,7 +15,8 @@ Build an AI platform with one central model-driven coordinator, nine specialist 
 - **Long-term memory:** `gaia.assistant.memory.LongTermMemory` stores facts explicitly submitted by the user in a separate database table. Facts can be listed by category and individually deleted. Credential-shaped text is rejected by a conservative pattern check.
 - **Action policy foundation:** `gaia.assistant.policy` defines safe, monitor, ask, and block decisions. Its `ApprovalLedger` stores short-lived approvals against exact action arguments in the shared database and permits one-time consumption. BLOCK cannot be overridden by approval.
 - **Credential handling:** the backend loads a private local `.env` for development or receives secrets from its deployment host. The Android/browser client must never contain provider credentials.
-- **API access:** chat and private memory endpoints require a backend bearer token (`GAIA_API_TOKEN`) of at least 32 characters. Comparisons use constant-time comparison. The token is never returned by the health endpoint.
+- **Authentication foundation:** `gaia.assistant.auth.UserAuth` stores scrypt password hashes and SHA-256 hashes of opaque, expiring, revocable sessions in the shared database. It is not wired to HTTP routes yet.
+- **API access:** chat and private memory endpoints still require a backend bearer token (`GAIA_API_TOKEN`) of at least 32 characters. Comparisons use constant-time comparison. The token is never returned by the health endpoint.
 
 ## API routes
 
@@ -39,7 +40,7 @@ All conversation and long-term-memory routes require the same bearer authenticat
 - The action-risk and approval classes are policy primitives only; they are not yet connected to an action executor. A ticket is not evidence that an action ran.
 - Long-term memory is explicit and user-submitted. GAIA does not automatically extract facts from chat, and semantic/vector retrieval is not implemented.
 - The credential-text filter is a guardrail, not a guarantee. Users should never save passwords, API keys, recovery codes, or other credentials.
-- The API has not been deployed. Authentication here is a simple shared development token, not production user authentication. Per-user accounts, session rotation, owner-scoped data isolation, and rate limits are not implemented. See `docs/USER_AUTHENTICATION.md`.
+- The API has not been deployed. Authentication on existing routes is still a simple shared development token, not production user authentication. The new account/session service is not exposed over HTTP. Per-user account routes, refresh rotation, owner-scoped data isolation, email verification, and rate limits are not implemented. See `docs/USER_AUTHENTICATION.md`.
 - PostgreSQL support is implemented but no hosted database is provisioned, configured, or backup/restore verified. Existing SQLite data is not automatically migrated.
 - The website has a read-only backend health check only. It does not yet sign users in or send chat requests; CORS is opt-in through exact `GAIA_CORS_ORIGINS` values.
 
