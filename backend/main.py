@@ -9,6 +9,7 @@ from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
 # Load a private local .env before the provider reads its configuration.
@@ -18,8 +19,25 @@ load_dotenv(override=False)
 from gaia.ai.engine import GaiaAI
 from gaia.ai.provider import ProviderError
 from gaia.assistant.memory import LongTermMemory, MemoryFactError
+from gaia.storage import database_backend
 
-app = FastAPI(title="GAIA — Heart of the World", version="1.3.0")
+app = FastAPI(title="GAIA — Heart of the World", version="1.4.0")
+
+# Cross-origin access is opt-in and restricted to exact origins configured by the operator.
+_allowed_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("GAIA_CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if _allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_allowed_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        max_age=600,
+    )
 ai = GaiaAI()
 long_term_memory = LongTermMemory()
 _CONVERSATION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,99}")
@@ -95,7 +113,8 @@ def health():
         "status": "ready" if ready else "setup_required",
         "api_auth_configured": auth_configured,
         "ai": provider,
-        "long_term_memory": "sqlite_explicit_facts",
+        "database_backend": database_backend(long_term_memory.engine),
+        "long_term_memory": "explicit_facts",
     }
 
 
