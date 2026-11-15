@@ -19,9 +19,7 @@ class GaiaAI:
             "memory": "sqlite",
         }
 
-    def respond(self, message: str, conversation_id: str = "default") -> dict[str, str]:
-        specialist_name = choose_specialist(message)
-        specialist = SPECIALISTS[specialist_name]
+    def respond(\n        self,\n        message: str,\n        conversation_id: str = "default",\n        specialist_name: str | None = None,\n    ) -> dict[str, str]:\n        specialist_name = specialist_name or choose_specialist(message)\n        if specialist_name not in SPECIALISTS:\n            raise ValueError("Unknown GAIA specialist.")\n        specialist = SPECIALISTS[specialist_name]
         history = self.memory.recent(conversation_id)
         system_prompt = (
             SPECIALISTS["GAIA"]["instruction"] + "\n\n"
