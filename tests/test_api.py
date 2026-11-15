@@ -63,6 +63,16 @@ def test_health_reports_setup_required_without_provider(api_client, monkeypatch)
     assert result.json()["ai"]["provider_configured"] is False
 
 
+def test_health_rejects_placeholder_api_token(api_client, monkeypatch):
+    client, _ = api_client
+    monkeypatch.setenv("GAIA_API_TOKEN", "put_a_long_random_api_token_here")
+
+    result = client.get("/health")
+
+    assert result.json()["status"] == "setup_required"
+    assert result.json()["api_auth_configured"] is False
+
+
 def test_health_reports_setup_required_without_api_token(api_client, monkeypatch):
     client, _ = api_client
     monkeypatch.delenv("GAIA_API_TOKEN")
