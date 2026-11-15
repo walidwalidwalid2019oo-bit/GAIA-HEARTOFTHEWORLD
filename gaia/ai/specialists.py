@@ -74,7 +74,11 @@ ROUTING_HINTS = {
 def choose_specialist(message: str) -> str:
     """Select the first matching specialist using whole-word, case-insensitive hints."""
     words = set(re.findall(r"[a-z0-9]+", message.casefold()))
-    for name, hints in ROUTING_HINTS.items():
-        if words.intersection(hints):
-            return name
-    return "GAIA"
+    # Choose the strongest domain match instead of letting one generic word
+    # (for example, "compare") override several specific subject terms.
+    ranked = [
+        (len(words.intersection(hints)), index, name)
+        for index, (name, hints) in enumerate(ROUTING_HINTS.items())
+    ]
+    score, _, specialist = max(ranked, default=(0, 0, "GAIA"))
+    return specialist if score else "GAIA"
