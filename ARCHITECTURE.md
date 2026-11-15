@@ -18,7 +18,8 @@ Build an AI platform with one central model-driven coordinator, nine specialist 
 
 ## API routes
 
-- `GET /health` — service and provider configuration status; does not reveal secrets.
+- `GET /health/live` — lightweight process-liveness check; does not depend on AI provider credentials. Use this for the hosting platform's health check.
+- `GET /health` — application readiness status for provider and backend-token configuration; does not reveal secret values. The client should use this before attempting chat.
 - `POST /chat` — send a message, optionally selecting a conversation ID and specialist.
 - `GET /conversations?limit=50` — list recent conversation summaries (limit 1–100).
 - `GET /conversations/{conversation_id}` — inspect the full saved message history for one conversation.
