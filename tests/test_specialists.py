@@ -10,7 +10,7 @@ from gaia.ai.specialists import SPECIALISTS, choose_specialist
         ("Tell me about wildlife habitats", "ARTEMIS"),
         ("Help me debug this Python code", "HEPHAESTUS"),
         ("Compare these options and make a plan", "MINERVA"),
-        ("Explain how ocean currents move", "POSEIDON"),
+        ("Describe how ocean currents move", "POSEIDON"),
         ("How do I care for garden plants?", "DEMETER"),
         ("Hello GAIA, what can you do?", "GAIA"),
     ],
