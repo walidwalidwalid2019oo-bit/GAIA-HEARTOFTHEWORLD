@@ -33,9 +33,11 @@ Open `website/index.html` locally, or enable GitHub Pages in the repository sett
 A separate FastAPI backend includes:
 - A provider-independent OpenAI-compatible Chat Completions adapter
 - One central GAIA coordinator and nine specialist perspectives
-- SQLite conversation history
+- SQLite/PostgreSQL conversation history through SQLAlchemy
 - Separate, explicitly saved long-term memory facts
 - A persistent, exact-argument, single-use action approval foundation
+- Optional PostgreSQL storage via `GAIA_DATABASE_URL`
+- A read-only website backend health check with no embedded API secret
 - Backend-only provider credentials
 - A required shared bearer token for chat and private memory endpoints
 - Automated tests for API routes, specialist routing, SQLite persistence, policy decisions, and provider failures
@@ -57,13 +59,13 @@ pip install -r requirements.txt
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for setup, API routes, tests, and security boundaries. See [ASSISTANT_FOUNDATIONS.md](docs/ASSISTANT_FOUNDATIONS.md) for the new memory and action-policy design.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for setup, API routes, tests, and security boundaries. See [ASSISTANT_FOUNDATIONS.md](docs/ASSISTANT_FOUNDATIONS.md) for the memory and action-policy design, and [USER_AUTHENTICATION.md](docs/USER_AUTHENTICATION.md) for the per-user security implementation plan.
 
-The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
+The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. PostgreSQL support is implemented but no hosted database is provisioned or backup/restore tested. The website health check does not yet provide login or live chat. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
 
 ### Hosting preparation (staging only)
 
-A Render Python/FastAPI staging blueprint is in [render.yaml](render.yaml). Read [the Render deployment plan](docs/RENDER_DEPLOYMENT.md) before using it: the current SQLite database is lost when a Render Free service spins down or restarts, so only disposable test data is acceptable until durable storage is implemented. The [GAIA wake-up UX plan](docs/WAKEUP_UX.md) specifies an honest elapsed-time indicator while the backend wakes; it does not use a fake 15-minute countdown.
+A Render Python/FastAPI staging blueprint is in [render.yaml](render.yaml). Read [the Render deployment plan](docs/RENDER_DEPLOYMENT.md) before using it: configure an external durable PostgreSQL database through `GAIA_DATABASE_URL`; the default SQLite file on Render Free is ephemeral. The [GAIA wake-up UX plan](docs/WAKEUP_UX.md) specifies an honest elapsed-time indicator while the backend wakes; it does not use a fake 15-minute countdown.
 
 **Public release target: V19.** This staging setup is not a public release.
 
