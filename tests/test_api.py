@@ -3,10 +3,9 @@ from __future__ import annotations
 from uuid import UUID
 
 import pytest
-from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 import backend.main as api_module
-from backend.main import ChatRequest
 from gaia.ai.provider import ProviderError
 
 
@@ -31,47 +30,143 @@ class FakeAI:
         return {**self.answer, "conversation_id": conversation_id}
 
 
-def test_health_reports_setup_required_without_provider(monkeypatch):
+@pytest.fixture
+def api_client(monkeypatch):
+    monkeypatch.setenv("GAIA_API_TOKEN", "test-access-token-" + ("x" * 32))
+    fake = FakeAI()
+    monkeypatch.setattr(api_module, "ai", fake)
+    with TestClient(api_module.app) as client:
+        yield client, fake
+
+
+def auth_headers():
+    return {"Authorization": "Bearer " + "test-access-token-" + ("x" * 32)}
+
+
+def test_health_reports_ready_only_when_provider_and_api_auth_are_configured(api_client):
+    client, _ = api_client
+
+    result = client.get("/health")
+
+    assert result.status_code == 200
+    assert result.json()["status"] == "ready"
+    assert result.json()["api_auth_configured"] is True
+
+
+def test_health_reports_setup_required_without_provider(api_client, monkeypatch):
+    client, _ = api_client
     monkeypatch.setattr(api_module, "ai", FakeAI(ready=False))
 
-    result = api_module.health()
+    result = client.get("/health")
 
-    assert result["status"] == "setup_required"
-    assert result["ai"]["provider_configured"] is False
-
-
-def test_health_reports_ready_when_provider_is_configured(monkeypatch):
-    monkeypatch.setattr(api_module, "ai", FakeAI(ready=True))
-
-    assert api_module.health()["status"] == "ready"
+    assert result.json()["status"] == "setup_required"
+    assert result.json()["ai"]["provider_configured"] is False
 
 
-def test_chat_trims_message_and_generates_conversation_id(monkeypatch):
-    fake = FakeAI()
-    monkeypatch.setattr(api_module, "ai", fake)
+def test_health_reports_setup_required_without_api_token(api_client, monkeypatch):
+    client, _ = api_client
+    monkeypatch.delenv("GAIA_API_TOKEN")
 
-    result = api_module.chat(ChatRequest(message="  Hello GAIA  "))
+    result = client.get("/health")
 
-    assert fake.calls[0][0] == "Hello GAIA"
-    UUID(fake.calls[0][1])
-    assert result["answer"] == "Hello."
+    assert result.json()["status"] == "setup_required"
+    assert result.json()["api_auth_configured"] is False
 
 
-def test_chat_rejects_whitespace_only_message(monkeypatch):
-    fake = FakeAI()
-    monkeypatch.setattr(api_module, "ai", fake)
+def test_chat_requires_bearer_authentication(api_client):
+    client, fake = api_client
 
-    with pytest.raises(HTTPException) as caught:
-        api_module.chat(ChatRequest(message="   "))
+    result = client.post("/chat", json={"message": "Hello"})
 
-    assert caught.value.status_code == 422
+    assert result.status_code == 401
     assert fake.calls == []
 
 
-def test_chat_maps_provider_failure_to_service_unavailable(monkeypatch):
-    monkeypatch.setattr(api_module, "ai", FakeAI(error=ProviderError("not configured")))
+def test_chat_fails_closed_when_api_token_is_not_configured(api_client, monkeypatch):
+    client, fake = api_client
+    monkeypatch.delenv("GAIA_API_TOKEN")
 
-    with pytest.raises(HTTPException) as caught:
-        api_module.chat(ChatRequest(message="Hello"))
+    result = client.post("/chat", json={"message": "Hello"}, headers=auth_headers())
 
-    assert caught.value.status_code == 503
+    assert result.status_code == 503
+    assert fake.calls == []
+
+
+def test_chat_trims_message_and_generates_conversation_id(api_client):
+    client, fake = api_client
+
+    result = client.post("/chat", json={"message": "  Hello GAIA  "}, headers=auth_headers())
+
+    assert result.status_code == 200
+    assert fake.calls[0][0] == "Hello GAIA"
+    UUID(fake.calls[0][1])
+    assert result.json()["answer"] == "Hello."
+
+
+def test_chat_uses_supplied_conversation_id(api_client):
+    client, fake = api_client
+
+    result = client.post(
+        "/chat",
+        json={"message": "Hello", "conversation_id": "phone-session_01"},
+        headers=auth_headers(),
+    )
+
+    assert result.status_code == 200
+    assert fake.calls == [("Hello", "phone-session_01")]
+    assert result.json()["conversation_id"] == "phone-session_01"
+
+
+@pytest.mark.parametrize("conversation_id", ["contains spaces", "../other", "line\nbreak", "💥"])
+def test_chat_rejects_unsafe_conversation_ids(api_client, conversation_id):
+    client, fake = api_client
+
+    result = client.post(
+        "/chat",
+        json={"message": "Hello", "conversation_id": conversation_id},
+        headers=auth_headers(),
+    )
+
+    assert result.status_code == 422
+    assert fake.calls == []
+
+
+def test_chat_rejects_whitespace_only_message(api_client):
+    client, fake = api_client
+
+    result = client.post("/chat", json={"message": "   "}, headers=auth_headers())
+
+    assert result.status_code == 422
+    assert fake.calls == []
+
+
+def test_chat_rejects_oversized_message(api_client):
+    client, fake = api_client
+
+    result = client.post("/chat", json={"message": "x" * 12001}, headers=auth_headers())
+
+    assert result.status_code == 422
+    assert fake.calls == []
+
+
+def test_chat_rejects_unknown_request_fields(api_client):
+    client, fake = api_client
+
+    result = client.post(
+        "/chat",
+        json={"message": "Hello", "unexpected": "value"},
+        headers=auth_headers(),
+    )
+
+    assert result.status_code == 422
+    assert fake.calls == []
+
+
+def test_chat_maps_provider_failure_to_service_unavailable(api_client, monkeypatch):
+    client, _ = api_client
+    monkeypatch.setattr(api_module, "ai", FakeAI(error=ProviderError("provider not configured")))
+
+    result = client.post("/chat", json={"message": "Hello"}, headers=auth_headers())
+
+    assert result.status_code == 503
+    assert result.json()["detail"] == "provider not configured"
