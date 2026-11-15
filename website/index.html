@@ -43,6 +43,23 @@
       <div><small>DIRECTIVE</small><b>LEARN · CONNECT · CREATE</b></div>
     </section>
 
+    <section class="backend-connect" aria-labelledby="backendTitle">
+      <div class="backend-connect-copy">
+        <div class="eyebrow">SYSTEM LINK / BACKEND CHECK</div>
+        <h2 id="backendTitle">CONNECT TO <em>GAIA.</em></h2>
+        <p>Check whether the real GAIA API is reachable. This connection check does not send chat content or credentials.</p>
+      </div>
+      <div class="backend-connect-controls">
+        <label for="backendUrl">GAIA API BASE URL</label>
+        <div class="backend-url-row">
+          <input id="backendUrl" type="url" inputmode="url" placeholder="https://your-gaia-service.example.com" autocomplete="url">
+          <button class="btn btn-primary" id="backendConnect" type="button">CHECK LINK ↗</button>
+        </div>
+        <p id="backendStatus" class="backend-status" role="status" aria-live="polite">LOCAL DEMO / NO BACKEND CONFIGURED</p>
+        <small>Health check only. Secure sign-in and live chat are not connected yet.</small>
+      </div>
+    </section>
+
     <section class="section network-section" id="network">
       <div class="section-heading"><div><div class="eyebrow">01 / SYSTEM ARCHITECTURE</div><h2>THE <em>NETWORK</em></h2></div><p>Every subsystem has a purpose. GAIA connects their knowledge into one coordinated ecosystem.</p></div>
       <div class="network-layout">
