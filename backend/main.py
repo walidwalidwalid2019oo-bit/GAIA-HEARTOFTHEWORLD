@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # Load a private local .env before the provider reads its configuration.
 # Production deployments should inject secrets through their host's secret manager.
@@ -34,8 +34,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=12000)
     conversation_id: str | None = Field(default=None, max_length=100)
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 @app.get("/health")
