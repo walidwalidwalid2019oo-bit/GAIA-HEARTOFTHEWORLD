@@ -19,12 +19,14 @@ class FakeAI:
         self.error = error
         self.ready = ready
         self.calls = []
+        self.selected_specialists = []
 
     def status(self):
         return {"provider_configured": self.ready, "memory": "sqlite"}
 
-    def respond(self, message, conversation_id):
+    def respond(self, message, conversation_id, specialist=None):
         self.calls.append((message, conversation_id))
+        self.selected_specialists.append(specialist)
         if self.error:
             raise self.error
         return {**self.answer, "conversation_id": conversation_id}
@@ -165,6 +167,32 @@ def test_chat_rejects_unknown_request_fields(api_client):
     result = client.post(
         "/chat",
         json={"message": "Hello", "unexpected": "value"},
+        headers=auth_headers(),
+    )
+
+    assert result.status_code == 422
+    assert fake.calls == []
+
+
+def test_chat_can_select_a_registered_specialist(api_client):
+    client, fake = api_client
+
+    result = client.post(
+        "/chat",
+        json={"message": "Review this system", "specialist": "HADES"},
+        headers=auth_headers(),
+    )
+
+    assert result.status_code == 200
+    assert fake.selected_specialists == ["HADES"]
+
+
+def test_chat_rejects_unknown_specialist(api_client):
+    client, fake = api_client
+
+    result = client.post(
+        "/chat",
+        json={"message": "Hello", "specialist": "UNKNOWN"},
         headers=auth_headers(),
     )
 
