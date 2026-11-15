@@ -10,16 +10,17 @@ Build an AI platform with one central model-driven coordinator, nine specialist 
 - **Central engine:** `gaia.ai.engine.GaiaAI` composes the central GAIA instruction with one specialist instruction.
 - **Specialists:** APOLLO, ARTEMIS, HEPHAESTUS, MINERVA, POSEIDON, DEMETER, AETHER, ELEUTHIA, and HADES are defined as specialist roles. The authenticated chat API accepts an optional explicit specialist selection; otherwise it uses deterministic routing.
 - **Model adapter:** OpenAI-compatible Chat Completions API. Configure the endpoint and model through environment variables.
-- **Conversation memory:** SQLite chat history, separated by conversation ID.
-- **Long-term memory:** `gaia.assistant.memory.LongTermMemory` stores facts explicitly submitted by the user in a separate SQLite table. Facts can be listed by category and individually deleted. Credential-shaped text is rejected by a conservative pattern check.
-- **Action policy foundation:** `gaia.assistant.policy` defines safe, monitor, ask, and block decisions. Its `ApprovalLedger` stores short-lived approvals against exact action arguments and permits one-time consumption. BLOCK cannot be overridden by approval.
+- **Database layer:** SQLAlchemy engine supports local SQLite and externally managed PostgreSQL through `GAIA_DATABASE_URL`; SQLite remains the local fallback. Conversation history, explicit facts, and action approvals use this shared engine. Existing SQLite data is not automatically migrated.
+- **Conversation memory:** persistent chat history, separated by conversation ID.
+- **Long-term memory:** `gaia.assistant.memory.LongTermMemory` stores facts explicitly submitted by the user in a separate database table. Facts can be listed by category and individually deleted. Credential-shaped text is rejected by a conservative pattern check.
+- **Action policy foundation:** `gaia.assistant.policy` defines safe, monitor, ask, and block decisions. Its `ApprovalLedger` stores short-lived approvals against exact action arguments in the shared database and permits one-time consumption. BLOCK cannot be overridden by approval.
 - **Credential handling:** the backend loads a private local `.env` for development or receives secrets from its deployment host. The Android/browser client must never contain provider credentials.
 - **API access:** chat and private memory endpoints require a backend bearer token (`GAIA_API_TOKEN`) of at least 32 characters. Comparisons use constant-time comparison. The token is never returned by the health endpoint.
 
 ## API routes
 
 - `GET /health/live` — lightweight process-liveness check; does not depend on AI provider credentials. Use this for the hosting platform's health check.
-- `GET /health` — application readiness status for provider and backend-token configuration; does not reveal secret values. The client should use this before attempting chat.
+- `GET /health` — application readiness status for provider and backend-token configuration plus a non-secret database-backend label. The website can call this public read-only endpoint.
 - `POST /chat` — send a message, optionally selecting a conversation ID and specialist.
 - `GET /conversations?limit=50` — list recent conversation summaries (limit 1–100).
 - `GET /conversations/{conversation_id}` — inspect the full saved message history for one conversation.
@@ -38,7 +39,9 @@ All conversation and long-term-memory routes require the same bearer authenticat
 - The action-risk and approval classes are policy primitives only; they are not yet connected to an action executor. A ticket is not evidence that an action ran.
 - Long-term memory is explicit and user-submitted. GAIA does not automatically extract facts from chat, and semantic/vector retrieval is not implemented.
 - The credential-text filter is a guardrail, not a guarantee. Users should never save passwords, API keys, recovery codes, or other credentials.
-- The API has not been deployed. Authentication here is a simple shared development token, not production user authentication. Add per-user identity, rate limits, abuse protection, TLS termination, and operational monitoring before public hosting.
+- The API has not been deployed. Authentication here is a simple shared development token, not production user authentication. Per-user accounts, session rotation, owner-scoped data isolation, and rate limits are not implemented. See `docs/USER_AUTHENTICATION.md`.
+- PostgreSQL support is implemented but no hosted database is provisioned, configured, or backup/restore verified. Existing SQLite data is not automatically migrated.
+- The website has a read-only backend health check only. It does not yet sign users in or send chat requests; CORS is opt-in through exact `GAIA_CORS_ORIGINS` values.
 
 ## Run locally
 
