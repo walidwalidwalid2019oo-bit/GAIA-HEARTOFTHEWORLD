@@ -1,4 +1,7 @@
-"""System instructions for GAIA and its six specialist subsystems."""
+"""System instructions and deterministic routing for GAIA's specialist roles."""
+from __future__ import annotations
+
+import re
 
 SPECIALISTS = {
     "GAIA": {
@@ -38,19 +41,22 @@ SPECIALISTS = {
     },
 }
 
+# Earlier entries win when a message clearly spans more than one specialty.
+# Include common plural forms so whole-word matching remains useful in normal writing.
 ROUTING_HINTS = {
-    "APOLLO": ("learn", "explain", "history", "study", "knowledge", "teach"),
-    "ARTEMIS": ("animal", "wildlife", "nature", "ecosystem", "species", "habitat"),
-    "HEPHAESTUS": ("code", "build", "create", "design", "engineer", "debug", "software"),
-    "MINERVA": ("analyze", "analyse", "compare", "strategy", "logic", "plan", "reason"),
-    "POSEIDON": ("ocean", "water", "sea", "river", "marine"),
-    "DEMETER": ("plant", "tree", "flower", "agriculture", "crop", "soil", "garden"),
+    "APOLLO": ("learn", "explain", "history", "study", "knowledge", "teach", "lessons"),
+    "ARTEMIS": ("animal", "animals", "wildlife", "nature", "ecosystem", "ecosystems", "species", "habitat", "habitats"),
+    "HEPHAESTUS": ("code", "coding", "build", "create", "design", "engineer", "engineering", "debug", "software"),
+    "MINERVA": ("analyze", "analyse", "compare", "comparison", "strategy", "logic", "plan", "planning", "reason"),
+    "POSEIDON": ("ocean", "oceans", "water", "waters", "sea", "seas", "river", "rivers", "marine"),
+    "DEMETER": ("plant", "plants", "tree", "trees", "flower", "flowers", "agriculture", "crop", "crops", "soil", "soils", "garden", "gardens"),
 }
 
 
 def choose_specialist(message: str) -> str:
-    text = message.casefold()
+    """Select the first matching specialist using whole-word, case-insensitive hints."""
+    words = set(re.findall(r"[a-z0-9]+", message.casefold()))
     for name, hints in ROUTING_HINTS.items():
-        if any(hint in text for hint in hints):
+        if words.intersection(hints):
             return name
     return "GAIA"
