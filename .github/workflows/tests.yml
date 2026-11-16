@@ -32,4 +32,4 @@ jobs:
       - name: Check website JavaScript syntax
         run: |
           node --check website/app.js
-          node --check website/entities.js
+          node --check website/entities.js\n          node --check website/access.js
