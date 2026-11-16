@@ -62,7 +62,7 @@ uvicorn backend.main:app --host 127.0.0.1 --port 8000
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for setup, API routes, tests, and security boundaries. See [ASSISTANT_FOUNDATIONS.md](docs/ASSISTANT_FOUNDATIONS.md) for the memory and action-policy design, and [USER_AUTHENTICATION.md](docs/USER_AUTHENTICATION.md) for the per-user security implementation plan.
 
-The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. PostgreSQL support is implemented but no hosted database is provisioned or backup/restore tested. The website health check does not yet provide login or live chat. Internal password/session primitives exist, but account routes and per-user data isolation are still pending. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
+The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. PostgreSQL support is implemented but no hosted database is provisioned or backup/restore tested. Conversation and saved-fact storage now support owner filters, and legacy rows with no owner are hidden by default. The existing shared development token maps to one fixed owner only; multi-user account sessions are not wired to the API yet. The website health check does not yet provide login or live chat. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
 
 ### Hosting preparation (staging only)
 
