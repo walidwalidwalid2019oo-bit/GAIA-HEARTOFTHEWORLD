@@ -11,6 +11,7 @@ from gaia.assistant.memory import LongTermMemory
 def client_with_memory(monkeypatch, tmp_path):
     token = "gaia-test-token-" + ("x" * 32)
     monkeypatch.setenv("GAIA_API_TOKEN", token)
+    monkeypatch.setenv("GAIA_ALLOW_SHARED_TOKEN", "true")
     monkeypatch.setattr(
         api_module, "long_term_memory",
         LongTermMemory(tmp_path / "assistant-api.sqlite3"),
