@@ -1,0 +1,40 @@
+name: GAIA private preview
+
+on:
+  push:
+    branches:
+      - gaia-first-demo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: gaia-preview-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out preview branch
+        uses: actions/checkout@v4
+      - name: Prepare static website
+        run: |
+          mkdir -p _site
+          cp -R website/. _site/
+          touch _site/.nojekyll
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload preview
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Publish preview
+        id: deployment
+        uses: actions/deploy-pages@v4
