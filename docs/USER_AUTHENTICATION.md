@@ -1,0 +1,71 @@
+# GAIA Per-User Authentication — Implementation Plan
+
+## Current security state
+
+The API still uses one shared development bearer token (`GAIA_API_TOKEN`).
+That is suitable only for private single-owner testing. It must never be
+embedded in the website JavaScript, an Android APK, or another distributed
+client. Conversation history and saved facts now have nullable owner IDs, and all storage operations accept an owner scope. The current shared token maps to one fixed development owner only; it does not identify separate accounts.
+
+The repository now contains an internal `UserAuth` foundation in
+`gaia.assistant.auth`: it validates account identifiers, stores scrypt password
+hashes, issues opaque bearer sessions while storing only SHA-256 token hashes,
+and supports expiry/revocation. Unit tests cover these primitives.
+
+This is not production account authentication: no HTTP routes expose these
+operations, no refresh-token rotation or email verification exists, and
+the account/session service is not yet connected to HTTP requests. The shared development token
+still protects the current API. This document remains the required design for
+finishing the work safely.
+
+## Required design
+
+1. **Account identity:** each account receives a random immutable user ID.
+   Email addresses, if used, must be verified before recovery or account
+   security actions are enabled.
+2. **Password storage:** use a maintained password-hashing library with
+   Argon2id (or another currently recommended memory-hard password hash).
+   Never store plaintext passwords or reversible password encryption.
+3. **Sessions:** issue short-lived signed access tokens and rotateable,
+   revocable refresh sessions. Store only hashes of refresh tokens. Enforce
+   expiry, logout, rotation, and reuse detection.
+4. **Data isolation:** every conversation and memory fact must carry an
+   owner ID. Every list/read/write/delete query must include the authenticated
+   owner ID. A guessed conversation or fact ID belonging to another account
+   must return the same not-found response as an unknown ID.
+5. **Legacy data:** existing unowned SQLite records must not silently become
+   visible to every new account. Migration must require an explicit
+   single-owner import decision or leave old rows inaccessible.
+6. **Abuse controls:** rate-limit registration, login, refresh, and expensive
+   model requests. Use generic login errors, bounded request sizes, and
+   server-side logging that never records passwords or bearer tokens.
+7. **Browser security:** use secure, HttpOnly, SameSite cookies when the
+   deployment architecture supports them, with CSRF protection for
+   cookie-authenticated state changes. If bearer tokens are used, keep them
+   short-lived and out of persistent browser storage.
+8. **Operations:** require HTTPS, secret rotation, backup/restore tests, and
+   a documented account deletion/export process before real user data.
+
+## Implementation order
+
+- [x] Add initial user and revocable-session tables to the shared database layer.
+- [x] Add nullable owner IDs and owner-filtered conversation/fact storage operations.
+- [x] Add cross-owner storage/API isolation tests and hide legacy NULL-owner records by default.
+- [ ] Add public account/session routes only after data isolation is enforced.
+- Add registration/login/logout/refresh with strict validation and tests.
+- [ ] Connect account sessions to the API and derive owner IDs from the authenticated session.
+- [ ] Switch protected routes from the shared-token owner to authenticated user identity.
+- Remove shared-token authentication from the production path; retain it
+  only behind an explicit development-only setting if still needed.
+- Connect the website sign-in flow only after all data routes enforce owner
+  isolation.
+
+## Not implemented yet
+
+Password hashing and opaque-session storage primitives exist, but no account
+registration/login HTTP routes, refresh-token rotation, login rate limiting,
+email verification, or production session management has been implemented.
+Current API requests still share one development-token owner. This is a
+single-owner isolation foundation, not multi-user authentication. Legacy rows
+with NULL owner IDs are deliberately hidden from owner-scoped reads and are not
+automatically reassigned.

@@ -34,3 +34,57 @@ $("forgeForm").addEventListener("submit",e=>{
  target.innerHTML=`<div class="blueprint-result"><div><small>PROPOSED SUBSYSTEM / LOCAL DRAFT</small><h3 style="color:${colors[color]}">${escapeHTML(name)}</h3><p>${escapeHTML(purpose)}</p><small>STATUS: AWAITING GAIA REVIEW</small></div><div><small>BLUEPRINT SPECIFICATION</small><ul><li>Identity: ${escapeHTML(name)} / custom symbol required</li><li>Color identity: ${color.toUpperCase()}</li><li>Permissions: not assigned</li><li>Memory boundary: isolated draft</li><li>Activation: disabled pending review</li></ul><p>This is a browser-only concept draft. No AI was created, no code was executed, and nothing was sent to a server.</p></div></div>`;
 });
 showAI("gaia");
+
+// Real backend reachability check. No bearer token or provider secret is stored here.
+const backendUrlInput = $("backendUrl");
+const backendStatus = $("backendStatus");
+const backendConnect = $("backendConnect");
+const BACKEND_URL_KEY = "gaia.backend.baseUrl";
+
+function normalizeBackendUrl(value) {
+ const parsed = new URL(value);
+ if (parsed.protocol !== "https:" && parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
+  throw new Error("Use HTTPS for remote GAIA servers.");
+ }
+ return parsed.origin + parsed.pathname.replace(/\/+$/, "");
+}
+
+async function checkBackend() {
+ const raw = backendUrlInput.value.trim();
+ if (!raw) {
+  backendStatus.textContent = "LOCAL DEMO / ENTER A BACKEND URL";
+  return;
+ }
+ let base;
+ try { base = normalizeBackendUrl(raw); }
+ catch (error) { backendStatus.textContent = error.message || "INVALID BACKEND URL"; return; }
+ backendConnect.disabled = true;
+ backendStatus.textContent = "WAKING GAIA / CHECKING API…";
+ const controller = new AbortController();
+ const timeout = setTimeout(() => controller.abort(), 10000);
+ try {
+  const response = await fetch(base + "/health", {
+   method: "GET", headers: { "Accept": "application/json" },
+   cache: "no-store", signal: controller.signal
+  });
+  if (!response.ok) throw new Error("API returned HTTP " + response.status);
+  const data = await response.json();
+  if (data.status === "ready") {
+   backendStatus.textContent = "GAIA API READY / " + String(data.database_backend || "DATABASE UNKNOWN").toUpperCase();
+  } else {
+   backendStatus.textContent = "API REACHED / SETUP REQUIRED";
+  }
+  try { localStorage.setItem(BACKEND_URL_KEY, base); } catch (_) { /* Storage is optional. */ }
+ } catch (error) {
+  backendStatus.textContent = error.name === "AbortError" ? "CONNECTION TIMED OUT" : "BACKEND UNREACHABLE / CHECK URL AND CORS";
+ } finally {
+  clearTimeout(timeout);
+  backendConnect.disabled = false;
+ }
+}
+
+backendConnect.addEventListener("click", checkBackend);
+try {
+ const savedBackendUrl = localStorage.getItem(BACKEND_URL_KEY);
+ if (savedBackendUrl) { backendUrlInput.value = savedBackendUrl; checkBackend(); }
+} catch (_) { /* Private browsing may disable local storage. */ }
