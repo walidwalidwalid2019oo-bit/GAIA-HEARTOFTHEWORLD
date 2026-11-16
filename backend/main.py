@@ -57,6 +57,13 @@ def _require_user_session(authorization: str | None) -> str:
     return owner_id
 
 
+def _configured_api_token() -> str | None:
+    token = os.getenv("GAIA_API_TOKEN", "").strip()
+    if len(token) < 32 or token.casefold().startswith(("put_", "your_", "replace_")):
+        return None
+    return token
+
+
 def _require_api_access(authorization: str | None) -> str:
     """Resolve a real account session; allow the legacy token only in dev mode."""
     token = _bearer_token(authorization)
@@ -65,8 +72,8 @@ def _require_api_access(authorization: str | None) -> str:
         return owner_id
 
     shared_enabled = os.getenv("GAIA_ALLOW_SHARED_TOKEN", "false").casefold() == "true"
-    api_token = os.getenv("GAIA_API_TOKEN", "").strip()
-    if shared_enabled and len(api_token) >= 32 and not api_token.casefold().startswith(("put_", "your_", "replace_")):
+    api_token = _configured_api_token()
+    if shared_enabled and api_token is not None:
         if token and hmac.compare_digest(token, api_token):
             return "shared-token-owner"
     raise HTTPException(status_code=401, detail="Missing or invalid account session.")
@@ -115,6 +122,7 @@ def health():
         "status": "ready" if provider.get("provider_configured") else "setup_required",
         "account_auth": "enabled",
         "shared_token_auth": os.getenv("GAIA_ALLOW_SHARED_TOKEN", "false").casefold() == "true",
+        "api_auth_configured": _configured_api_token() is not None,
         "ai": provider,
         "database_backend": database_backend(ai.memory.engine),
         "long_term_memory": "explicit_owner_scoped_facts",
