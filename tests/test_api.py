@@ -111,7 +111,7 @@ def test_chat_requires_bearer_authentication(api_client):
     assert fake.calls == []
 
 
-def test_chat_fails_closed_when_api_token_is_not_configured(api_client, monkeypatch):
+def test_chat_rejects_missing_account_or_shared_token(api_client, monkeypatch):
     client, fake = api_client
     monkeypatch.delenv("GAIA_API_TOKEN")
 
