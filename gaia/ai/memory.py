@@ -24,7 +24,7 @@ class ConversationMemory:
             )"""))
             # Additive migration: old rows stay NULL and are deliberately not
             # visible to any authenticated owner until an explicit migration.
-            columns = {column["name"] for column in inspect(self.engine).get_columns("messages")}
+            columns = {column["name"] for column in inspect(db).get_columns("messages")}
             if "owner_id" not in columns:
                 db.execute(text("ALTER TABLE messages ADD COLUMN owner_id VARCHAR(36)"))
             db.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_owner_conversation ON messages(owner_id, conversation_id, id)"))
