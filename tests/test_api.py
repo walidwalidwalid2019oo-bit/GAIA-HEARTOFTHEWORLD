@@ -280,3 +280,37 @@ def test_memory_routes_reject_unsafe_conversation_ids(api_client):
     result = client.delete("/conversations/bad%20id", headers=auth_headers())
 
     assert result.status_code == 422
+
+
+def test_conversation_history_isolated_between_owners(tmp_path):
+    memory = ConversationMemory(tmp_path / "owner-isolation.sqlite3")
+    memory.add("same-id", "user", "Owner A secret", owner_id="owner-a")
+    memory.add("same-id", "user", "Owner B secret", owner_id="owner-b")
+
+    assert memory.get_conversation("same-id", owner_id="owner-a")[0]["content"] == "Owner A secret"
+    assert memory.get_conversation("same-id", owner_id="owner-b")[0]["content"] == "Owner B secret"
+    assert memory.conversations(owner_id="owner-a")[0]["conversation_id"] == "same-id"
+    assert memory.delete_conversation("same-id", owner_id="owner-a") is True
+    assert memory.get_conversation("same-id", owner_id="owner-a") == []
+    assert memory.get_conversation("same-id", owner_id="owner-b")[0]["content"] == "Owner B secret"
+
+
+def test_legacy_conversation_rows_are_unowned_and_hidden(tmp_path):
+    from sqlalchemy import text
+    from gaia.storage import create_database_engine
+
+    engine = create_database_engine(tmp_path / "legacy.sqlite3")
+    with engine.begin() as db:
+        db.execute(text("""CREATE TABLE messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id VARCHAR(100) NOT NULL,
+            role VARCHAR(9) NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )"""))
+        db.execute(text("INSERT INTO messages(conversation_id, role, content) VALUES "
+                        "('old-chat', 'user', 'Legacy private content')"))
+    memory = ConversationMemory(engine=engine)
+    assert memory.get_conversation("old-chat", owner_id="new-owner") == []
+    assert memory.conversations(owner_id="new-owner") == []
+    engine.dispose()
