@@ -80,6 +80,7 @@ See [ANDROID_SETUP.md](ANDROID_SETUP.md) for phone instructions using Pydroid 3.
 app.py
 main.py
 gaia/
+  storage.py
   core.py
   forge.py
   memory.py
@@ -89,6 +90,7 @@ gaia/
     memory.py
     specialists.py
   assistant/
+    auth.py
     memory.py
     policy.py
 backend/
@@ -101,6 +103,8 @@ website/
   app.js
 tests/
   test_api.py
+  test_auth.py
+  test_storage.py
   test_assistant_api.py
   test_assistant_foundations.py
   test_core.py
