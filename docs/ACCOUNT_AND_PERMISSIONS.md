@@ -2,7 +2,10 @@
 
 ## Account entry
 
-The new access preview is `website/access.html`. It offers email/password
+The new access preview is `website/access.html`. The dashboard links to it as
+its primary Enter GAIA action. This milestone does not yet hard-block every
+website URL behind sign-in; the final app shell/session transport must be
+reviewed before making it the mandatory root entry. It offers email/password
 registration and sign-in. The API provides:
 
 - `POST /auth/register` — create an account and issue a one-hour session.
