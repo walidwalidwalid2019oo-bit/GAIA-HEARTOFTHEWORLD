@@ -95,3 +95,23 @@ def test_registration_rejects_short_password(client):
         "email": "short@example.com", "password": "tiny"
     })
     assert response.status_code == 400
+
+
+def test_accounts_cannot_read_each_others_conversation_history(client):
+    a = register(client, "chat-a@example.com")
+    b = register(client, "chat-b@example.com")
+    conversation_id = "same-conversation-id"
+
+    first = client.post("/chat", headers=headers(a["session"]), json={
+        "message": "Private message from A", "conversation_id": conversation_id
+    })
+    second = client.post("/chat", headers=headers(b["session"]), json={
+        "message": "Private message from B", "conversation_id": conversation_id
+    })
+    assert first.status_code == 200
+    assert second.status_code == 200
+
+    a_history = client.get(f"/conversations/{conversation_id}", headers=headers(a["session"]))
+    b_history = client.get(f"/conversations/{conversation_id}", headers=headers(b["session"]))
+    assert [m["content"] for m in a_history.json()["messages"]] == ["Private message from A"]
+    assert [m["content"] for m in b_history.json()["messages"]] == ["Private message from B"]
