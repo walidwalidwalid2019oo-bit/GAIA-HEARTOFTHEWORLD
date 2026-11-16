@@ -26,7 +26,7 @@ class LongTermMemory:
                 content TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 owner_id VARCHAR(36)
             )"""))
-            columns = {column["name"] for column in inspect(self.engine).get_columns("memory_facts")}
+            columns = {column["name"] for column in inspect(db).get_columns("memory_facts")}
             if "owner_id" not in columns:
                 db.execute(text("ALTER TABLE memory_facts ADD COLUMN owner_id VARCHAR(36)"))
             db.execute(text("CREATE INDEX IF NOT EXISTS idx_memory_facts_owner_created ON memory_facts(owner_id, created_at)"))
