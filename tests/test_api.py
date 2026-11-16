@@ -117,7 +117,7 @@ def test_chat_rejects_missing_account_or_shared_token(api_client, monkeypatch):
 
     result = client.post("/chat", json={"message": "Hello"}, headers=auth_headers())
 
-    assert result.status_code == 503
+    assert result.status_code == 401
     assert fake.calls == []
 
 
