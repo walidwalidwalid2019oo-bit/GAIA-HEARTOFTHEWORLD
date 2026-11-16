@@ -21,14 +21,16 @@ class FakeAI:
         self.ready = ready
         self.calls = []
         self.selected_specialists = []
+        self.owners = []
         self.memory = None
 
     def status(self):
         return {"provider_configured": self.ready, "memory": "sqlite"}
 
-    def respond(self, message, conversation_id, specialist=None):
+    def respond(self, message, conversation_id, specialist=None, *, owner_id="local"):
         self.calls.append((message, conversation_id))
         self.selected_specialists.append(specialist)
+        self.owners.append(owner_id)
         if self.error:
             raise self.error
         return {**self.answer, "conversation_id": conversation_id}
@@ -199,6 +201,7 @@ def test_chat_can_select_a_registered_specialist(api_client):
 
     assert result.status_code == 200
     assert fake.selected_specialists == ["HADES"]
+    assert fake.owners == ["shared-token-owner"]
 
 
 def test_chat_rejects_unknown_specialist(api_client):
@@ -226,7 +229,7 @@ def test_chat_maps_provider_failure_to_service_unavailable(api_client, monkeypat
 
 def test_memory_routes_require_authentication(api_client):
     client, fake = api_client
-    fake.memory.add("session-a", "user", "Private message")
+    fake.memory.add("session-a", "user", "Private message", owner_id="shared-token-owner")
 
     result = client.get("/conversations")
 
@@ -236,9 +239,9 @@ def test_memory_routes_require_authentication(api_client):
 
 def test_list_and_read_conversations(api_client):
     client, fake = api_client
-    fake.memory.add("session-a", "user", "Hello")
-    fake.memory.add("session-a", "assistant", "Welcome")
-    fake.memory.add("session-b", "user", "Another chat")
+    fake.memory.add("session-a", "user", "Hello", owner_id="shared-token-owner")
+    fake.memory.add("session-a", "assistant", "Welcome", owner_id="shared-token-owner")
+    fake.memory.add("session-b", "user", "Another chat", owner_id="shared-token-owner")
 
     listing = client.get("/conversations?limit=1", headers=auth_headers())
     detail = client.get("/conversations/session-a", headers=auth_headers())
@@ -260,15 +263,15 @@ def test_read_conversation_returns_not_found_for_unknown_id(api_client):
 
 def test_delete_conversation_removes_only_the_selected_history(api_client):
     client, fake = api_client
-    fake.memory.add("session-a", "user", "Remove this")
-    fake.memory.add("session-b", "user", "Keep this")
+    fake.memory.add("session-a", "user", "Remove this", owner_id="shared-token-owner")
+    fake.memory.add("session-b", "user", "Keep this", owner_id="shared-token-owner")
 
     result = client.delete("/conversations/session-a", headers=auth_headers())
 
     assert result.status_code == 200
     assert result.json()["deleted"] is True
-    assert fake.memory.get_conversation("session-a") == []
-    assert fake.memory.get_conversation("session-b")[0]["content"] == "Keep this"
+    assert fake.memory.get_conversation("session-a", owner_id="shared-token-owner") == []
+    assert fake.memory.get_conversation("session-b", owner_id="shared-token-owner")[0]["content"] == "Keep this"
 
 
 def test_memory_routes_reject_unsafe_conversation_ids(api_client):
