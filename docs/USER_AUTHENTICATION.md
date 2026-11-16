@@ -5,7 +5,7 @@
 The API still uses one shared development bearer token (`GAIA_API_TOKEN`).
 That is suitable only for private single-owner testing. It must never be
 embedded in the website JavaScript, an Android APK, or another distributed
-client. The current conversation and fact tables are not scoped to accounts.
+client. Conversation history and saved facts now have nullable owner IDs, and all storage operations accept an owner scope. The current shared token maps to one fixed development owner only; it does not identify separate accounts.
 
 The repository now contains an internal `UserAuth` foundation in
 `gaia.assistant.auth`: it validates account identifiers, stores scrypt password
@@ -14,7 +14,7 @@ and supports expiry/revocation. Unit tests cover these primitives.
 
 This is not production account authentication: no HTTP routes expose these
 operations, no refresh-token rotation or email verification exists, and
-private records are not yet scoped to user IDs. The shared development token
+the account/session service is not yet connected to HTTP requests. The shared development token
 still protects the current API. This document remains the required design for
 finishing the work safely.
 
@@ -49,11 +49,12 @@ finishing the work safely.
 ## Implementation order
 
 - [x] Add initial user and revocable-session tables to the shared database layer.
+- [x] Add nullable owner IDs and owner-filtered conversation/fact storage operations.
+- [x] Add cross-owner storage/API isolation tests and hide legacy NULL-owner records by default.
 - [ ] Add public account/session routes only after data isolation is enforced.
 - Add registration/login/logout/refresh with strict validation and tests.
-- Add owner IDs and ownership filters to conversation history and explicit
-  long-term memory, including cross-account isolation tests.
-- Switch protected routes to authenticated user identity.
+- [ ] Connect account sessions to the API and derive owner IDs from the authenticated session.
+- [ ] Switch protected routes from the shared-token owner to authenticated user identity.
 - Remove shared-token authentication from the production path; retain it
   only behind an explicit development-only setting if still needed.
 - Connect the website sign-in flow only after all data routes enforce owner
@@ -62,6 +63,9 @@ finishing the work safely.
 ## Not implemented yet
 
 Password hashing and opaque-session storage primitives exist, but no account
-registration/login HTTP routes, refresh-token rotation, user ownership columns,
-per-user route filtering, login rate limiting, email verification, or production
-session management has been implemented by this checkpoint.
+registration/login HTTP routes, refresh-token rotation, login rate limiting,
+email verification, or production session management has been implemented.
+Current API requests still share one development-token owner. This is a
+single-owner isolation foundation, not multi-user authentication. Legacy rows
+with NULL owner IDs are deliberately hidden from owner-scoped reads and are not
+automatically reassigned.
