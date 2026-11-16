@@ -38,9 +38,10 @@ A separate FastAPI backend includes:
 - A persistent, exact-argument, single-use action approval foundation
 - Optional PostgreSQL storage via `GAIA_DATABASE_URL`
 - A read-only website backend health check with no embedded API secret
-- Internal account/password/session primitives (not yet exposed to clients)
+- Email/password registration, login, logout, and expiring account sessions
+- Per-account conversation and saved-memory ownership checks
 - Backend-only provider credentials
-- A required shared bearer token for chat and private memory endpoints
+- Account bearer sessions for chat and private memory endpoints; optional shared token is development-only
 - Automated tests for API routes, specialist routing, SQLite persistence, policy decisions, and provider failures
 
 The specialists are selectable prompt perspectives within one configured model; they are not separate model instances or autonomous agents. The action-policy module is groundwork only: no external action handlers or unrestricted device controls are enabled.
@@ -60,9 +61,9 @@ pip install -r requirements.txt
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for setup, API routes, tests, and security boundaries. See [ASSISTANT_FOUNDATIONS.md](docs/ASSISTANT_FOUNDATIONS.md) for the memory and action-policy design, and [USER_AUTHENTICATION.md](docs/USER_AUTHENTICATION.md) for the per-user security implementation plan.
+Open `website/access.html` for the account-first access preview. See [ACCOUNT_AND_PERMISSIONS.md](docs/ACCOUNT_AND_PERMISSIONS.md) for the onboarding, memory, and device-permission boundaries. See [ARCHITECTURE.md](ARCHITECTURE.md) for setup, API routes, tests, and security boundaries. See [ASSISTANT_FOUNDATIONS.md](docs/ASSISTANT_FOUNDATIONS.md) for the memory and action-policy design, and [USER_AUTHENTICATION.md](docs/USER_AUTHENTICATION.md) for the per-user security implementation plan.
 
-The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. PostgreSQL support is implemented but no hosted database is provisioned or backup/restore tested. Conversation and saved-fact storage now support owner filters, and legacy rows with no owner are hidden by default. The existing shared development token maps to one fixed owner only; multi-user account sessions are not wired to the API yet. The website health check does not yet provide login or live chat. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
+The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. PostgreSQL support is implemented but no hosted database is provisioned or backup/restore tested. Conversation and saved-fact storage now support owner filters, and legacy rows with no owner are hidden by default. Email/password account routes are now wired to the API, and the new `website/access.html` screen can sign in, create an account, and manage explicit saved facts. Its session token is held in page memory rather than persistent browser storage. Google/GitHub OAuth is not implemented yet; those buttons are intentionally disabled. The web preview can request browser notifications only after a click; native phone-call and SMS permissions are not available in a website. Authentication still needs persistent rate limiting, refresh-token rotation, email verification/recovery, and a security review before public access. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
 
 ### Hosting preparation (staging only)
 
