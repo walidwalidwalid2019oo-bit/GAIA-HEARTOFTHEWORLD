@@ -124,7 +124,7 @@ def health():
         "shared_token_auth": os.getenv("GAIA_ALLOW_SHARED_TOKEN", "false").casefold() == "true",
         "api_auth_configured": _configured_api_token() is not None,
         "ai": provider,
-        "database_backend": database_backend(ai.memory.engine),
+        "database_backend": database_backend(long_term_memory.engine),
         "long_term_memory": "explicit_owner_scoped_facts",
     }
 
