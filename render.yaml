@@ -19,5 +19,7 @@ services:
         value: https://api.groq.com/openai/v1
       - key: GAIA_API_TOKEN
         generateValue: true
+      - key: GAIA_ALLOW_SHARED_TOKEN
+        value: "false"
       - key: GAIA_TIMEOUT_SECONDS
         value: "60"
