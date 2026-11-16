@@ -25,12 +25,12 @@ Build an AI platform with one central model-driven coordinator, nine specialist 
 - `POST /chat` — send a message, optionally selecting a conversation ID and specialist.
 - `GET /conversations?limit=50` — list recent conversation summaries (limit 1–100).
 - `GET /conversations/{conversation_id}` — inspect the full saved message history for one conversation.
-- `DELETE /conversations/{conversation_id}` — permanently delete one conversation's messages from the SQLite database.
+- `DELETE /conversations/{conversation_id}` — permanently delete one owner's conversation messages from the configured database.
 - `GET /memory/facts?category=projects&limit=100` — list explicitly saved facts.
 - `POST /memory/facts` — save one explicitly submitted fact, optionally categorized.
-- `DELETE /memory/facts/{fact_id}` — delete one fact; request body must include `{"confirm":true}`.
+- `DELETE /memory/facts/{fact_id}` — delete one owner's fact; request body must include `{"confirm":true}`.
 
-All conversation and long-term-memory routes require the same bearer authentication as chat. Conversation IDs are restricted to a safe ASCII character set. These routes currently operate on the single backend database; they are not yet isolated by individual user accounts.
+All conversation and long-term-memory routes require the same bearer authentication as chat. Conversation IDs are restricted to a safe ASCII character set. Storage methods and API queries now filter conversation history and saved facts by owner ID. However, the current shared development bearer token maps every request to one fixed owner (`shared-token-owner`); this is still single-owner mode, not multi-user authentication. Legacy rows with NULL owner IDs are hidden from owner-scoped reads and are not automatically reassigned.
 
 ## Important current limitations
 
@@ -40,7 +40,7 @@ All conversation and long-term-memory routes require the same bearer authenticat
 - The action-risk and approval classes are policy primitives only; they are not yet connected to an action executor. A ticket is not evidence that an action ran.
 - Long-term memory is explicit and user-submitted. GAIA does not automatically extract facts from chat, and semantic/vector retrieval is not implemented.
 - The credential-text filter is a guardrail, not a guarantee. Users should never save passwords, API keys, recovery codes, or other credentials.
-- The API has not been deployed. Authentication on existing routes is still a simple shared development token, not production user authentication. The new account/session service is not exposed over HTTP. Per-user account routes, refresh rotation, owner-scoped data isolation, email verification, and rate limits are not implemented. See `docs/USER_AUTHENTICATION.md`.
+- The API has not been deployed. Authentication on existing routes is still a simple shared development token, not production user authentication. The new account/session service is not exposed over HTTP. Per-user account routes, refresh rotation, account-session integration, email verification, and rate limits are not implemented. The owner-scoped storage foundation is not multi-user authentication. See `docs/USER_AUTHENTICATION.md`.
 - PostgreSQL support is implemented but no hosted database is provisioned, configured, or backup/restore verified. Existing SQLite data is not automatically migrated.
 - The website has a read-only backend health check only. It does not yet sign users in or send chat requests; CORS is opt-in through exact `GAIA_CORS_ORIGINS` values.
 
