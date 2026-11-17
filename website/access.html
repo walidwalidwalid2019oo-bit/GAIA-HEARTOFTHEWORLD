@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#081310">
+  <meta name="description" content="Enter GAIA — Heart of the World.">
+  <title>GAIA // ACCESS GATE</title>
+  <link rel="stylesheet" href="access.css">
+</head>
+<body>
+  <div class="horizon-glow glow-a"></div><div class="horizon-glow glow-b"></div>
+  <header class="access-top">
+    <a class="gaia-brand" href="index.html"><span class="brand-seed">✧</span><span>PROJECT <b>GAIA</b><small>HEART OF THE WORLD</small></span></a>
+    <span class="build-tag"><i></i> ACCESS GATE / PREVIEW</span>
+  </header>
+
+  <main class="access-shell">
+    <section class="intro">
+      <div class="eyebrow"><span></span> YOUR CONNECTION TO THE NETWORK</div>
+      <h1>ENTER THE<br><em>GAIA SYSTEM.</em></h1>
+      <p>A personal space for conversations, saved memories, and the minds of the GAIA network. Your account keeps your data separate from other users.</p>
+      <div class="core-orbit" aria-hidden="true"><div class="orbit-ring ring-one"></div><div class="orbit-ring ring-two"></div><div class="orbit-center">✧<small>G-CORE</small></div><span class="orbit-dot dot-one"></span><span class="orbit-dot dot-two"></span></div>
+      <div class="intro-foot"><span>HORIZON-INSPIRED INTERFACE</span><span>PRIVATE BY DESIGN</span></div>
+    </section>
+
+    <section class="access-panel" id="authPanel" aria-labelledby="authTitle">
+      <div class="panel-kicker">IDENTITY VERIFICATION / 01</div>
+      <h2 id="authTitle">WELCOME <em>BACK.</em></h2>
+      <p class="panel-sub">Sign in to continue, or create a new GAIA account.</p>
+
+      <div class="provider-buttons">
+        <button class="provider" id="googleButton" type="button" disabled><span class="provider-icon google">G</span><span>Continue with Google</span><small>NOT CONNECTED</small></button>
+        <button class="provider" id="githubButton" type="button" disabled><span class="provider-icon github">⌘</span><span>Continue with GitHub</span><small>NOT CONNECTED</small></button>
+      </div>
+      <div class="or-line"><span>OR USE EMAIL</span></div>
+
+      <div class="mode-tabs" role="tablist" aria-label="Account action">
+        <button class="mode-tab active" id="loginTab" type="button" role="tab" aria-selected="true">SIGN IN</button>
+        <button class="mode-tab" id="registerTab" type="button" role="tab" aria-selected="false">CREATE ACCOUNT</button>
+      </div>
+      <form id="accountForm" novalidate>
+        <label for="email">EMAIL ADDRESS</label>
+        <input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+        <label for="password">PASSWORD</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" placeholder="At least 12 characters" required>
+        <p class="password-hint" id="passwordHint">Use your account password. GAIA never needs your other app passwords.</p>
+        <button class="primary-action" id="submitAccount" type="submit">SIGN IN <span>↗</span></button>
+      </form>
+      <p class="auth-status" id="authStatus" role="status" aria-live="polite">ACCOUNT SERVICE / CONNECT A BACKEND TO CONTINUE</p>
+      <details class="server-settings">
+        <summary>BACKEND CONNECTION SETTINGS</summary>
+        <label for="apiBase">GAIA API BASE URL</label>
+        <input id="apiBase" type="url" inputmode="url" placeholder="https://your-gaia-service.example.com">
+        <button id="saveApi" class="subtle-action" type="button">SAVE SERVER ADDRESS</button>
+      </details>
+      <p class="oauth-note">Google and GitHub sign-in are shown here but remain unavailable until their OAuth applications and secure callback settings are configured on the backend. No fake sign-in is performed.</p>
+    </section>
+
+    <section class="private-workspace hidden" id="workspace" aria-labelledby="workspaceTitle">
+      <div class="workspace-head"><div><div class="panel-kicker">IDENTITY VERIFIED / 02</div><h2 id="workspaceTitle">WELCOME TO <em>GAIA.</em></h2><p id="accountLabel">Signed in</p></div><button id="logoutButton" class="subtle-action" type="button">SIGN OUT</button></div>
+
+      <section class="workspace-card memory-card" aria-labelledby="memoryTitle">
+        <div class="card-heading"><div><div class="panel-kicker">PERSONAL DATA / OWNER-ONLY</div><h3 id="memoryTitle">MEMORY <em>VAULT</em></h3></div><span class="status-chip">PRIVATE</span></div>
+        <p>GAIA only saves a long-term fact when you choose to save it. Chat history and saved facts are separate. You can review or delete each saved fact.</p>
+        <form id="memoryForm" class="memory-form">
+          <label for="memoryCategory">CATEGORY</label>
+          <select id="memoryCategory"><option value="general">General</option><option value="projects">Projects</option><option value="preferences">Preferences</option><option value="learning">Learning</option></select>
+          <label for="memoryContent">WHAT SHOULD GAIA REMEMBER?</label>
+          <textarea id="memoryContent" maxlength="2000" rows="3" placeholder="Write a non-sensitive fact you want saved..." required></textarea>
+          <button class="primary-action" type="submit">SAVE TO MY MEMORY <span>↗</span></button>
+        </form>
+        <div class="memory-list-head"><b>SAVED FACTS</b><button id="refreshMemory" class="subtle-action" type="button">REFRESH</button></div>
+        <div id="memoryList" class="memory-list" aria-live="polite"><p class="empty-state">Sign in to load your private memory.</p></div>
+      </section>
+
+      <section class="workspace-card permission-card" aria-labelledby="permissionTitle">
+        <div class="card-heading"><div><div class="panel-kicker">DEVICE CAPABILITIES / OPTIONAL</div><h3 id="permissionTitle">PERMISSION <em>CONTROL</em></h3></div><span class="status-chip">YOU DECIDE</span></div>
+        <p>Nothing is enabled automatically. GAIA must explain a capability and ask before requesting access. You can keep every option off.</p>
+        <div class="permission-row"><div><b>APP NOTIFICATIONS</b><small>Browser notifications for updates you choose to receive.</small></div><button id="notificationButton" class="permission-action" type="button">ASK PERMISSION</button></div>
+        <div class="permission-row"><div><b>VOICE CALLS TO YOU</b><small>Not available in this web preview. A future Android app must request OS permission separately; GAIA will never call without a clear action from you.</small></div><span class="permission-state">NOT AVAILABLE</span></div>
+        <div class="permission-row"><div><b>TEXT MESSAGES TO YOU</b><small>Not available in this web preview. Any future messaging feature must show the message and ask before sending.</small></div><span class="permission-state">NOT AVAILABLE</span></div>
+        <p class="permission-foot">You can use GAIA without notifications, calls, or texts. No phone permission is requested by this website.</p>
+      </section>
+      <a class="dashboard-link" href="index.html">OPEN THE GAIA NETWORK DASHBOARD ↗</a>
+    </section>
+  </main>
+
+  <footer class="access-footer"><span>GAIA // HEART OF THE WORLD</span><span>EXPERIMENTAL BUILD · NOT A PUBLIC RELEASE</span><span>V19 RELEASE GATE</span></footer>
+  <script src="access.js"></script>
+</body>
+</html>

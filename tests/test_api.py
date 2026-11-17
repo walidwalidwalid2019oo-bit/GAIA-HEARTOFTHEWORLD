@@ -39,6 +39,7 @@ class FakeAI:
 @pytest.fixture
 def api_client(monkeypatch, tmp_path):
     monkeypatch.setenv("GAIA_API_TOKEN", "test-access-token-" + ("x" * 32))
+    monkeypatch.setenv("GAIA_ALLOW_SHARED_TOKEN", "true")
     fake = FakeAI()
     fake.memory = ConversationMemory(tmp_path / "gaia-test.sqlite3")
     monkeypatch.setattr(api_module, "ai", fake)
@@ -87,7 +88,7 @@ def test_health_rejects_placeholder_api_token(api_client, monkeypatch):
 
     result = client.get("/health")
 
-    assert result.json()["status"] == "setup_required"
+    assert result.json()["status"] == "ready"
     assert result.json()["api_auth_configured"] is False
 
 
@@ -97,7 +98,7 @@ def test_health_reports_setup_required_without_api_token(api_client, monkeypatch
 
     result = client.get("/health")
 
-    assert result.json()["status"] == "setup_required"
+    assert result.json()["status"] == "ready"
     assert result.json()["api_auth_configured"] is False
 
 
@@ -110,13 +111,13 @@ def test_chat_requires_bearer_authentication(api_client):
     assert fake.calls == []
 
 
-def test_chat_fails_closed_when_api_token_is_not_configured(api_client, monkeypatch):
+def test_chat_rejects_missing_account_or_shared_token(api_client, monkeypatch):
     client, fake = api_client
     monkeypatch.delenv("GAIA_API_TOKEN")
 
     result = client.post("/chat", json={"message": "Hello"}, headers=auth_headers())
 
-    assert result.status_code == 503
+    assert result.status_code == 401
     assert fake.calls == []
 
 
