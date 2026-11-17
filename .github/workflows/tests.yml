@@ -2,9 +2,9 @@ name: GAIA tests
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "feature/**"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "feature/**"]
   workflow_dispatch:
 
 permissions:
@@ -13,6 +13,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -23,5 +24,18 @@ jobs:
           cache: "pip"
       - name: Install test dependencies
         run: pip install -r requirements-dev.txt
-      - name: Run tests
+      - name: Run Python tests
         run: python -m pytest -q
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check available website JavaScript
+        shell: bash
+        run: |
+          for file in website/app.js website/entities.js website/access.js; do
+            if [ -f "$file" ]; then
+              echo "Checking $file"
+              node --check "$file"
+            fi
+          done
