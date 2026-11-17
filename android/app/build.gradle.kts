@@ -20,6 +20,7 @@ android {
             // Package the existing mobile-first website inside the APK.
             assets.srcDir("../../website")
         }
+    }
 }
 
 dependencies {
