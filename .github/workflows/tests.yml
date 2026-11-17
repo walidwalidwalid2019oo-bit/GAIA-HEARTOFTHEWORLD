@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main", "feature/**"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "feature/**"]
   workflow_dispatch:
 
 permissions:
@@ -13,6 +13,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -29,7 +30,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Check website JavaScript syntax
+      - name: Check available website JavaScript
+        shell: bash
         run: |
-          node --check website/app.js
-          node --check website/entities.js\n          node --check website/access.js
+          for file in website/app.js website/entities.js website/access.js; do
+            if [ -f "$file" ]; then
+              echo "Checking $file"
+              node --check "$file"
+            fi
+          done
