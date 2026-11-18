@@ -100,8 +100,12 @@ Before any release candidate:
 ## What is true in GAIA today
 
 - The backend already keeps provider credentials in server-side configuration.
-- The current API uses a single shared development bearer token. It is not
-  production user authentication and must never be embedded in a distributed APK.
+- The development branch now includes email/password account sessions; the
+  shared bearer token is optional legacy compatibility and is disabled by
+  default. It must never be embedded in a distributed APK.
+- Persistent fixed-window rate limits cover global/email registration and login
+  plus per-account chat. Trusted per-IP limits, adaptive abuse controls, and a
+  PostgreSQL concurrency test remain incomplete.
 - The current long-term memory and action-approval additions are foundations, not
   a production-ready automation service.
 - GAIA is not deployed, and no live provider request has been verified.
@@ -109,9 +113,10 @@ Before any release candidate:
 ## Implementation order
 
 1. Choose the eventual backend hosting model and identity provider.
-2. Design per-user authentication, session lifecycle, authorization scopes, and
-   account isolation.
-3. Add rate limits, usage budgets, audit events, and provider allowlists.
+2. Complete per-user authentication, refresh-token lifecycle, authorization
+   scopes, and account isolation review.
+3. Complete trusted per-IP/adaptive abuse controls, usage budgets, audit events,
+   and provider allowlists; verify database-backed limits on PostgreSQL.
 4. Integrate a managed secret store and key rotation procedure.
 5. Add optional Play Integrity verification for selected high-risk requests.
 6. Build an Android client that contains no provider master key or shared backend

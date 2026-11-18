@@ -58,10 +58,11 @@ not require them.
 ## Not production-ready
 
 This milestone is a private development foundation, not a public account
-service. Before deployment to real users, GAIA still needs persistent
-registration/login rate limits, refresh-token rotation and reuse detection,
-email verification and account recovery, account deletion/export, CSRF/XSS
-review for the final session design, abuse monitoring, backup/restore tests,
-and a full security review. OAuth is not active. Do not deploy this
+service. The private development branch now has persistent global/email registration
+and login limits plus per-account chat limits. Before deployment to real users,
+GAIA still needs trusted per-IP and adaptive abuse controls, refresh-token
+rotation and reuse detection, email verification and account recovery, account
+deletion/export, CSRF/XSS review for the final session design, abuse monitoring,
+backup/restore tests, and a full security review. OAuth is not active. Do not deploy this
 registration endpoint publicly until those controls are implemented and
 reviewed.

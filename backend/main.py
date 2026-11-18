@@ -18,9 +18,13 @@ from gaia.ai.engine import GaiaAI
 from gaia.ai.provider import ProviderError
 from gaia.assistant.auth import AuthenticationError, UserAuth
 from gaia.assistant.memory import LongTermMemory, MemoryFactError
+from gaia.assistant.rate_limit import (
+    PersistentRateLimiter,
+    RateLimitConfigurationError,
+)
 from gaia.storage import database_backend
 
-app = FastAPI(title="GAIA — Heart of the World", version="1.5.0")
+app = FastAPI(title="GAIA — Heart of the World", version="1.6.0")
 _allowed_origins = [
     origin.strip().rstrip("/")
     for origin in os.getenv("GAIA_CORS_ORIGINS", "").split(",")
@@ -39,7 +43,21 @@ if _allowed_origins:
 ai = GaiaAI()
 user_auth = UserAuth(engine=ai.memory.engine)
 long_term_memory = LongTermMemory(engine=ai.memory.engine)
+rate_limiter = PersistentRateLimiter(engine=ai.memory.engine)
 _CONVERSATION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,99}")
+
+# Conservative private-staging defaults. These are server-side limits, not
+# client-provided values. Tune only after observing legitimate usage.
+AUTH_REGISTER_GLOBAL_LIMIT = 20
+AUTH_REGISTER_GLOBAL_WINDOW = 3600
+AUTH_REGISTER_EMAIL_LIMIT = 5
+AUTH_REGISTER_EMAIL_WINDOW = 3600
+AUTH_LOGIN_GLOBAL_LIMIT = 120
+AUTH_LOGIN_GLOBAL_WINDOW = 60
+AUTH_LOGIN_EMAIL_LIMIT = 10
+AUTH_LOGIN_EMAIL_WINDOW = 900
+CHAT_ACCOUNT_MINUTE_LIMIT = 30
+CHAT_ACCOUNT_DAY_LIMIT = 200
 
 
 def _bearer_token(authorization: str | None) -> str | None:
@@ -64,8 +82,49 @@ def _configured_api_token() -> str | None:
     return token
 
 
+def _rate_limit_secret_configured() -> bool:
+    secret = os.getenv("GAIA_RATE_LIMIT_SECRET", "").strip()
+    return (
+        len(secret.encode("utf-8")) >= 32
+        and not secret.casefold().startswith(("put_", "your_", "replace_"))
+    )
+
+
+def _email_rate_limit_identity(email: str) -> str:
+    # Invalid/blank values still share a bounded bucket before validation.
+    return email.strip().casefold() or "<blank>"
+
+
+def _enforce_rate_limit(
+    scope: str,
+    identity: str,
+    *,
+    limit: int,
+    window_seconds: int,
+) -> None:
+    try:
+        decision = rate_limiter.consume(
+            scope,
+            identity,
+            limit=limit,
+            window_seconds=window_seconds,
+            secret=os.getenv("GAIA_RATE_LIMIT_SECRET", "").strip(),
+        )
+    except RateLimitConfigurationError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Server rate limiting is not configured.",
+        ) from exc
+    if not decision.allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Try again later.",
+            headers={"Retry-After": str(decision.retry_after)},
+        )
+
+
 def _require_api_access(authorization: str | None) -> str:
-    """Resolve a real account session; allow the legacy token only in dev mode."""
+    """Resolve an account session; allow the legacy token only in dev mode."""
     token = _bearer_token(authorization)
     owner_id = user_auth.resolve_session(token or "")
     if owner_id:
@@ -117,12 +176,15 @@ def liveness():
 @app.get("/health")
 def health():
     provider = ai.status()
+    rate_limit_configured = _rate_limit_secret_configured()
+    ready = bool(provider.get("provider_configured")) and rate_limit_configured
     return {
         "service": "GAIA",
-        "status": "ready" if provider.get("provider_configured") else "setup_required",
+        "status": "ready" if ready else "setup_required",
         "account_auth": "enabled",
         "shared_token_auth": os.getenv("GAIA_ALLOW_SHARED_TOKEN", "false").casefold() == "true",
         "api_auth_configured": _configured_api_token() is not None,
+        "rate_limiting_configured": rate_limit_configured,
         "ai": provider,
         "database_backend": database_backend(long_term_memory.engine),
         "long_term_memory": "explicit_owner_scoped_facts",
@@ -131,6 +193,20 @@ def health():
 
 @app.post("/auth/register")
 def register(request: AccountRequest):
+    # Global and per-email buckets run before scrypt to limit cheap account spam
+    # and expensive password hashing. Email values are HMACed before storage.
+    _enforce_rate_limit(
+        "auth:register:global",
+        "all",
+        limit=AUTH_REGISTER_GLOBAL_LIMIT,
+        window_seconds=AUTH_REGISTER_GLOBAL_WINDOW,
+    )
+    _enforce_rate_limit(
+        "auth:register:email",
+        _email_rate_limit_identity(request.email),
+        limit=AUTH_REGISTER_EMAIL_LIMIT,
+        window_seconds=AUTH_REGISTER_EMAIL_WINDOW,
+    )
     try:
         account = user_auth.create_user(request.email, request.password)
         session = user_auth.issue_session(account["user_id"])
@@ -142,6 +218,18 @@ def register(request: AccountRequest):
 
 @app.post("/auth/login")
 def login(request: AccountRequest):
+    _enforce_rate_limit(
+        "auth:login:global",
+        "all",
+        limit=AUTH_LOGIN_GLOBAL_LIMIT,
+        window_seconds=AUTH_LOGIN_GLOBAL_WINDOW,
+    )
+    _enforce_rate_limit(
+        "auth:login:email",
+        _email_rate_limit_identity(request.email),
+        limit=AUTH_LOGIN_EMAIL_LIMIT,
+        window_seconds=AUTH_LOGIN_EMAIL_WINDOW,
+    )
     account = user_auth.verify_credentials(request.email, request.password)
     if account is None:
         raise HTTPException(status_code=401, detail="Email or password is incorrect.")
@@ -186,6 +274,19 @@ def chat(request: ChatRequest, authorization: str | None = Header(default=None))
     if conversation_id:
         _validate_conversation_id(conversation_id)
     conversation_id = conversation_id or str(uuid4())
+
+    _enforce_rate_limit(
+        "chat:account:minute",
+        owner_id,
+        limit=CHAT_ACCOUNT_MINUTE_LIMIT,
+        window_seconds=60,
+    )
+    _enforce_rate_limit(
+        "chat:account:day",
+        owner_id,
+        limit=CHAT_ACCOUNT_DAY_LIMIT,
+        window_seconds=86400,
+    )
     try:
         return ai.respond(message, conversation_id, request.specialist, owner_id=owner_id)
     except ProviderError as exc:

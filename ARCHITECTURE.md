@@ -2,47 +2,71 @@
 
 ## Goal
 
-Build an AI platform with one central model-driven coordinator, nine specialist perspectives, separate conversation and long-term memory, and a permission-controlled tool layer.
+Build a private AI platform around one central model-driven coordinator, nine specialist perspectives, owner-scoped memory, and permission-controlled capabilities.
 
 ## Current architecture
 
-- **API layer:** FastAPI exposes health, chat, authenticated conversation-memory endpoints, and explicit long-term memory endpoints.
+- **API layer:** FastAPI exposes liveness/readiness, account sessions, chat, conversation history, and explicit long-term-memory routes.
 - **Central engine:** `gaia.ai.engine.GaiaAI` composes the central GAIA instruction with one specialist instruction.
-- **Specialists:** APOLLO, ARTEMIS, HEPHAESTUS, MINERVA, POSEIDON, DEMETER, AETHER, ELEUTHIA, and HADES are defined as specialist roles. The authenticated chat API accepts an optional explicit specialist selection; otherwise it uses deterministic routing.
-- **Model adapter:** OpenAI-compatible Chat Completions API. Configure the endpoint and model through environment variables.
-- **Database layer:** SQLAlchemy engine supports local SQLite and externally managed PostgreSQL through `GAIA_DATABASE_URL`; SQLite remains the local fallback. Conversation history, explicit facts, and action approvals use this shared engine. Existing SQLite data is not automatically migrated.
-- **Conversation memory:** persistent chat history, separated by conversation ID.
-- **Long-term memory:** `gaia.assistant.memory.LongTermMemory` stores facts explicitly submitted by the user in a separate database table. Facts can be listed by category and individually deleted. Credential-shaped text is rejected by a conservative pattern check.
-- **Action policy foundation:** `gaia.assistant.policy` defines safe, monitor, ask, and block decisions. Its `ApprovalLedger` stores short-lived approvals against exact action arguments in the shared database and permits one-time consumption. BLOCK cannot be overridden by approval.
-- **Credential handling:** the backend loads a private local `.env` for development or receives secrets from its deployment host. The Android/browser client must never contain provider credentials.
-- **Authentication foundation:** `gaia.assistant.auth.UserAuth` stores scrypt password hashes and SHA-256 hashes of opaque, expiring, revocable sessions in the shared database. It is not wired to HTTP routes yet.
-- **API access:** chat and private memory endpoints still require a backend bearer token (`GAIA_API_TOKEN`) of at least 32 characters. Comparisons use constant-time comparison. The token is never returned by the health endpoint.
+- **Specialists:** APOLLO, ARTEMIS, HEPHAESTUS, MINERVA, POSEIDON, DEMETER, AETHER, ELEUTHIA, and HADES are prompt perspectives selected within one configured model call. They are not independent autonomous agents.
+- **Model adapter:** OpenAI-compatible Chat Completions API. Configure the provider endpoint, model, and key through private backend environment variables.
+- **Database layer:** SQLAlchemy supports local SQLite and externally managed PostgreSQL through `GAIA_DATABASE_URL`; SQLite is the local fallback. Conversation history, explicit facts, account sessions, action approvals, and rate-limit buckets use the shared engine. Existing SQLite data is not automatically migrated.
+- **Conversation memory:** persistent chat history scoped to an immutable account owner ID.
+- **Long-term memory:** `gaia.assistant.memory.LongTermMemory` stores facts explicitly submitted by the user. Facts can be listed by category and individually deleted. Credential-shaped text is rejected by a basic guardrail, not a complete secret detector.
+- **Authentication:** `gaia.assistant.auth.UserAuth` supports email/password registration, login, current-account lookup, and logout. Passwords use scrypt hashes; opaque one-hour bearer sessions are stored as SHA-256 token hashes and can be revoked.
+- **Rate limiting:** `gaia.assistant.rate_limit.PersistentRateLimiter` uses atomic SQLite/PostgreSQL fixed-window upserts. Registration and login have global and normalized-email limits; chat has per-account minute and daily limits. Only HMAC digests are stored. The same private `GAIA_RATE_LIMIT_SECRET` and database must be shared by all backend instances.
+- **Action policy foundation:** `gaia.assistant.policy` defines safe, monitor, ask, and block decisions. Its `ApprovalLedger` stores short-lived approvals against exact action arguments and permits one-time consumption. It is not connected to an action executor.
+- **Credential handling:** provider credentials and the rate-limit HMAC secret stay on the backend. Never put provider keys or shared backend secrets in website code, an APK, or GitHub.
 
 ## API routes
 
-- `GET /health/live` — lightweight process-liveness check; does not depend on AI provider credentials. Use this for the hosting platform's health check.
-- `GET /health` — application readiness status for provider and backend-token configuration plus a non-secret database-backend label. The website can call this public read-only endpoint.
+- `GET /health/live` — lightweight process-liveness check; does not depend on provider credentials.
+- `GET /health` — readiness information for provider and rate-limit configuration plus a non-secret database-backend label.
+- `POST /auth/register` — create an email/password account and issue a session.
+- `POST /auth/login` — verify credentials and issue a session.
+- `GET /auth/me` — inspect the account represented by a valid session.
+- `POST /auth/logout` — revoke the current session.
 - `POST /chat` — send a message, optionally selecting a conversation ID and specialist.
 - `GET /conversations?limit=50` — list recent conversation summaries (limit 1–100).
-- `GET /conversations/{conversation_id}` — inspect the full saved message history for one conversation.
-- `DELETE /conversations/{conversation_id}` — permanently delete one owner's conversation messages from the configured database.
+- `GET /conversations/{conversation_id}` — inspect one owner's saved message history.
+- `DELETE /conversations/{conversation_id}` — permanently delete one owner's conversation.
 - `GET /memory/facts?category=projects&limit=100` — list explicitly saved facts.
-- `POST /memory/facts` — save one explicitly submitted fact, optionally categorized.
+- `POST /memory/facts` — save one explicitly submitted fact.
 - `DELETE /memory/facts/{fact_id}` — delete one owner's fact; request body must include `{"confirm":true}`.
 
-All conversation and long-term-memory routes require the same bearer authentication as chat. Conversation IDs are restricted to a safe ASCII character set. Storage methods and API queries now filter conversation history and saved facts by owner ID. However, the current shared development bearer token maps every request to one fixed owner (`shared-token-owner`); this is still single-owner mode, not multi-user authentication. Legacy rows with NULL owner IDs are hidden from owner-scoped reads and are not automatically reassigned.
+## Authentication, ownership, and rate limits
+
+Protected chat, conversation, and memory routes resolve the account session to an immutable owner ID. All list/read/write/delete operations include that owner ID. A guessed record ID belonging to another account returns the same not-found result as an unknown record. Legacy rows with NULL owner IDs remain unowned and hidden; they are not automatically reassigned.
+
+The legacy shared bearer token is disabled unless `GAIA_ALLOW_SHARED_TOKEN=true` is explicitly set for private development. When enabled, it maps every caller to one shared development owner and one chat rate-limit bucket. Never embed it in a distributed client.
+
+Current private-development fixed-window defaults:
+
+| Endpoint | Scope | Limit |
+|---|---|---:|
+| Registration | Global | 20 per hour |
+| Registration | Normalized email | 5 per hour |
+| Login | Global | 120 per minute |
+| Login | Normalized email | 10 per 15 minutes |
+| Chat | Account | 30 per minute |
+| Chat | Account | 200 per day |
+
+Rate-limit rejections return HTTP 429 with `Retry-After`. Registration, login, and chat fail closed with HTTP 503 if `GAIA_RATE_LIMIT_SECRET` is missing or is still a placeholder.
+
+Per-IP limits are not enabled yet. GAIA does not trust arbitrary `X-Forwarded-For` values; the trusted reverse-proxy boundary must be explicitly configured and tested before IP-based enforcement is added. Fixed windows can permit bursts at a window boundary. See `docs/RATE_LIMITING.md`.
 
 ## Important current limitations
 
-- This is one model call with a selected specialist prompt, not nine independent models or autonomous agents.
+- The specialist system is one model call with a selected prompt, not nine independent models or autonomous agents.
 - The provider adapter is tested with mocked responses, but no live provider request has been verified.
-- No external action handlers are registered yet. GAIA cannot execute code, browse, send messages, read email, or control devices.
-- The action-risk and approval classes are policy primitives only; they are not yet connected to an action executor. A ticket is not evidence that an action ran.
-- Long-term memory is explicit and user-submitted. GAIA does not automatically extract facts from chat, and semantic/vector retrieval is not implemented.
-- The credential-text filter is a guardrail, not a guarantee. Users should never save passwords, API keys, recovery codes, or other credentials.
-- The API has not been deployed. Authentication on existing routes is still a simple shared development token, not production user authentication. The new account/session service is not exposed over HTTP. Per-user account routes, refresh rotation, account-session integration, email verification, and rate limits are not implemented. The owner-scoped storage foundation is not multi-user authentication. See `docs/USER_AUTHENTICATION.md`.
-- PostgreSQL support is implemented but no hosted database is provisioned, configured, or backup/restore verified. Existing SQLite data is not automatically migrated.
-- The website has a read-only backend health check only. It does not yet sign users in or send chat requests; CORS is opt-in through exact `GAIA_CORS_ORIGINS` values.
+- No external action handlers are registered. GAIA cannot execute code, browse, send messages, read email, or control devices.
+- The action-risk and approval classes are policy primitives only; they are not connected to an action executor.
+- Long-term memory is explicit and user-submitted. Automatic extraction and semantic/vector retrieval are not implemented.
+- Per-IP/adaptive abuse controls, refresh-token rotation and reuse detection, email verification/recovery, account export/deletion, and full session/XSS/CSRF review remain incomplete.
+- PostgreSQL support exists, but no hosted database is provisioned and PostgreSQL concurrency, backup/restore, and SQLite migration have not been verified.
+- The website includes an account access screen and explicit memory controls plus a read-only backend health check. Real frontend chat is not connected yet; CORS is opt-in through exact `GAIA_CORS_ORIGINS` values.
+- The Render configuration is a staging proposal only. No service has been deployed. SQLite on an ephemeral host is not durable or shared across independent instances.
+- Public release is forbidden before V19. Private feature branches and draft PRs are development work, not release candidates.
 
 ## Run locally
 
@@ -52,22 +76,21 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and replace the placeholders privately:
+Copy `.env.example` to a private `.env`. Configure `GAIA_API_KEY`, `GAIA_MODEL`, and a random `GAIA_RATE_LIMIT_SECRET` of at least 32 bytes. Generate a value privately:
 
 ```bash
-cp .env.example .env
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-Use the generated random value for `GAIA_API_TOKEN` in your private `.env`. Set `GAIA_API_KEY` and `GAIA_MODEL` there too; optionally change `GAIA_BASE_URL`. Remote provider URLs must use HTTPS; plain HTTP is accepted only for localhost development. `python-dotenv` loads `.env` for the backend process. Never commit `.env`, paste a key into source code, or place a provider key in the Android app.
+Optionally set `GAIA_DATABASE_URL` to a private durable PostgreSQL URL. If it is absent, the backend uses the local SQLite file configured by `GAIA_DB_PATH`. Set `GAIA_BASE_URL` only if using a different OpenAI-compatible provider. The legacy `GAIA_API_TOKEN` is only needed when `GAIA_ALLOW_SHARED_TOKEN=true` is deliberately enabled for private development.
 
-Start the service on the local machine only:
+Start the backend on localhost:
 
 ```bash
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Check `GET /health`. It reports `setup_required` until both the provider and API access token are configured. Send `POST /chat` with JSON containing `message` and optionally `conversation_id`, plus an `Authorization: Bearer <GAIA_API_TOKEN>` header. Message length is capped at 12,000 characters; conversation IDs are limited to 100 safe ASCII characters; unknown request fields are rejected.
+Check `GET /health/live` and `GET /health`. The latter reports `setup_required` until the provider and rate-limit secret are configured. Register or log in through the account routes and send the returned session as `Authorization: Bearer <session>` for protected requests. Do not put provider credentials or a shared backend token in the browser or Android client.
 
 Run automated tests:
 
@@ -79,18 +102,21 @@ python -m pytest -q
 ## Security boundaries
 
 - Keep `.env` out of Git; only the placeholder `.env.example` is tracked.
-- Keep provider and backend access tokens on the server. A shared token embedded in a distributed mobile app is not a secure production authentication design.
+- Keep provider and rate-limit secrets on the backend. A client-side key or shared token is not a secure production authentication design.
 - The local server binds to `127.0.0.1` by default. Do not expose it publicly as-is.
-- The provider adapter validates remote HTTPS URLs, rejects embedded URL credentials, bounds timeouts, and caps response size.
-- The API validates request size and conversation ID syntax. SQLite queries use parameters.
+- Remote provider URLs must use HTTPS; the provider adapter rejects embedded URL credentials, bounds timeouts, and caps response size.
+- The API validates request size and conversation ID syntax. SQL statements use parameters.
+- The credential-shaped memory filter is a guardrail, not a guarantee. Never save passwords, API keys, recovery codes, or other credentials.
 - Deleting a conversation or long-term fact is destructive; the client should ask for confirmation before calling the delete route.
 - Generated code is not executed; HEPHAESTUS currently produces design guidance only.
+- No real provider key, account, hosted database, or Android release credential has been configured or exposed by this development work.
 
 ## Next milestones
 
-1. Add a typed action registry with explicit capability grants and input schemas.
-2. Add a bounded task planner with saved steps, progress, cancellation, and evidence-based completion.
-3. Connect read-only integrations first, such as user-selected documents or email summaries.
-4. Connect write integrations only after exact-argument approvals are enforced by the executor.
-5. Add opt-in scheduled routines with timezone handling, run history, and no permission escalation.
-6. Add per-user authentication, rate limits, deployment configuration, and abuse protection before public hosting.
+1. Add trusted per-IP and adaptive abuse controls after reverse-proxy trust is configured.
+2. Add refresh-token rotation, reuse detection, email verification, and secure account recovery.
+3. Connect real frontend chat using account sessions and an honest wake-up/retry state.
+4. Select and test durable PostgreSQL, including concurrency, backup/restore, and explicit SQLite migration.
+5. Complete browser-session, Android Keystore, permission, and APK secret-scanning reviews.
+6. Add a typed action registry with explicit capability grants and input schemas.
+7. Keep all public release work blocked until the V19 security and product checklist passes.
