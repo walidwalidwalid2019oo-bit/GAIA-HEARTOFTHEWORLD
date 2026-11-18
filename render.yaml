@@ -17,8 +17,6 @@ services:
         sync: false
       - key: GAIA_BASE_URL
         value: https://api.groq.com/openai/v1
-      - key: GAIA_API_TOKEN
-        generateValue: true
       - key: GAIA_ALLOW_SHARED_TOKEN
         value: "false"
       - key: GAIA_RATE_LIMIT_SECRET
