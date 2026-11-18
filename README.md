@@ -95,6 +95,7 @@ gaia/
     auth.py
     memory.py
     policy.py
+    rate_limit.py
 backend/
   main.py
 data/
@@ -106,6 +107,8 @@ website/
 tests/
   test_api.py
   test_auth.py
+  test_auth_api.py
+  test_rate_limit.py
   test_storage.py
   test_assistant_api.py
   test_assistant_foundations.py
