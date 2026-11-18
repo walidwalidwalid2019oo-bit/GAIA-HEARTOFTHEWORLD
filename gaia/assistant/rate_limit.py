@@ -90,7 +90,7 @@ class PersistentRateLimiter:
         current = int(time.time()) if now is None else int(now)
         window_start = current - (current % window_seconds)
         retry_after = max(1, window_start + window_seconds - current)
-        expires_at = window_start + max(window_seconds * 2, 86_400)
+        expires_at = window_start + window_seconds
 
         if self.engine.dialect.name == "sqlite":
             insert = sqlite_insert
@@ -120,7 +120,7 @@ class PersistentRateLimiter:
         with self.engine.begin() as db:
             # Expired counters are safe to remove; no request identity is retained.
             db.execute(
-                delete(self._buckets).where(self._buckets.c.expires_at < current)
+                delete(self._buckets).where(self._buckets.c.expires_at <= current)
             )
             row = db.execute(statement).first()
 
