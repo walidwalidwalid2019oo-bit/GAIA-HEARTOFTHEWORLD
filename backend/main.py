@@ -90,6 +90,11 @@ def _rate_limit_secret_configured() -> bool:
     )
 
 
+def _email_rate_limit_identity(email: str) -> str:
+    # Invalid/blank values still share a bounded bucket before validation.
+    return email.strip().casefold() or "<blank>"
+
+
 def _enforce_rate_limit(
     scope: str,
     identity: str,
@@ -198,7 +203,7 @@ def register(request: AccountRequest):
     )
     _enforce_rate_limit(
         "auth:register:email",
-        request.email.strip().casefold(),
+        _email_rate_limit_identity(request.email),
         limit=AUTH_REGISTER_EMAIL_LIMIT,
         window_seconds=AUTH_REGISTER_EMAIL_WINDOW,
     )
