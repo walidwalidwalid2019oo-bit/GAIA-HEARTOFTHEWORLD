@@ -226,7 +226,7 @@ def login(request: AccountRequest):
     )
     _enforce_rate_limit(
         "auth:login:email",
-        request.email.strip().casefold(),
+        _email_rate_limit_identity(request.email),
         limit=AUTH_LOGIN_EMAIL_LIMIT,
         window_seconds=AUTH_LOGIN_EMAIL_WINDOW,
     )
