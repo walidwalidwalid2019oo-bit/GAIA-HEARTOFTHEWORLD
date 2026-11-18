@@ -16,7 +16,8 @@ target remains V19.
 - Supports an externally managed PostgreSQL database through the private `GAIA_DATABASE_URL` setting.
 - Allows browser origins only when exact values are supplied through `GAIA_CORS_ORIGINS`.
 - Requests the provider key and model as dashboard-supplied secrets/settings.
-- Generates a backend bearer token rather than putting one in source code.
+- Generates a private rate-limit HMAC secret rather than putting one in source code.
+- Keeps the legacy shared bearer token disabled for account-based staging.
 
 ## Important: do not use real personal memory on this free staging service
 
@@ -40,8 +41,10 @@ short-lived database for long-term personal memory.
 ## Required deployment checks
 
 1. Keep this service private to development; do not announce it as a release.
-2. Set `GAIA_API_KEY` and `GAIA_MODEL` in Render's environment UI. Never
-   paste credentials into this file, GitHub commits, the website, or an APK.
+2. Set `GAIA_API_KEY` and `GAIA_MODEL` in Render's environment UI. Keep the
+   generated `GAIA_RATE_LIMIT_SECRET` private and consistent across every
+   backend instance. Never paste credentials into this file, GitHub commits,
+   the website, or an APK.
 3. Configure `GAIA_DATABASE_URL` with a private, durable PostgreSQL URL and
    verify backups and restore before using non-disposable data.
 4. Set `GAIA_CORS_ORIGINS` to exact trusted website origins only. Do not use
@@ -61,7 +64,9 @@ short-lived database for long-term personal memory.
 - [ ] Durable PostgreSQL provider selected, provisioned, configured, and backup/restore verified.
 - [ ] Existing SQLite data explicitly migrated (no automatic migration is performed).
 - [ ] Per-user authentication implemented.
-- [ ] Rate limits and abuse controls implemented.
+- [x] Initial persistent registration, login, and per-account chat limits implemented in the private feature branch.
+- [ ] Trusted per-IP limits and adaptive abuse controls configured and tested.
+- [ ] PostgreSQL rate-limit concurrency tested against the selected durable database.
 - [ ] Backend deployed and verified.
 - [x] Website can perform a public read-only backend health check without embedding a secret.
 - [ ] Authenticated frontend chat connected after per-user sessions and data isolation.
