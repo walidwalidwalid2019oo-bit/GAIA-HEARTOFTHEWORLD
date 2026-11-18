@@ -29,8 +29,11 @@ configuration fails closed with HTTP 503 on registration, login, and chat.
 - The database stores a keyed HMAC-SHA-256 digest of the scope and identifier;
   it does not store the raw email address or account ID in rate-limit rows.
 - The private `GAIA_RATE_LIMIT_SECRET` must contain at least 32 random bytes
-  and must be identical across all backend instances.
-- Expired buckets are cleaned during subsequent requests.
+  and must be identical across all backend instances. Rotating it changes the
+  HMAC bucket namespace, so coordinate rotation during a quiet maintenance
+  window rather than assuming existing counters will carry over.
+- Expired buckets are cleaned during subsequent requests; rows are retained
+  only through the end of their fixed window.
 
 Generate a local development value privately, for example:
 
