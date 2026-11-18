@@ -168,3 +168,11 @@ def test_account_routes_fail_closed_without_rate_limit_secret(client, monkeypatc
     })
     assert response.status_code == 503
     assert response.json()["detail"] == "Server rate limiting is not configured."
+
+
+def test_invalid_blank_email_is_rejected_without_bypassing_rate_limiter(client):
+    response = client.post("/auth/register", json={
+        "email": "   ", "password": "correct-horse-battery"
+    })
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Enter a valid email address."
