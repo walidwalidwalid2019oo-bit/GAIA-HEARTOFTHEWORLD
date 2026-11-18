@@ -7,6 +7,7 @@ import backend.main as api_module
 from gaia.ai.memory import ConversationMemory
 from gaia.assistant.auth import UserAuth
 from gaia.assistant.memory import LongTermMemory
+from gaia.assistant.rate_limit import PersistentRateLimiter
 
 
 class FakeAI:
@@ -27,6 +28,8 @@ def client(monkeypatch, tmp_path):
     monkeypatch.setattr(api_module, "ai", fake)
     monkeypatch.setattr(api_module, "user_auth", UserAuth(engine=memory.engine))
     monkeypatch.setattr(api_module, "long_term_memory", LongTermMemory(engine=memory.engine))
+    monkeypatch.setenv("GAIA_RATE_LIMIT_SECRET", "test-rate-limit-secret-" + ("x" * 32))
+    monkeypatch.setattr(api_module, "rate_limiter", PersistentRateLimiter(engine=memory.engine))
     monkeypatch.setenv("GAIA_ALLOW_SHARED_TOKEN", "false")
     with TestClient(api_module.app) as test_client:
         yield test_client
@@ -115,3 +118,53 @@ def test_accounts_cannot_read_each_others_conversation_history(client):
     b_history = client.get(f"/conversations/{conversation_id}", headers=headers(b["session"]))
     assert [m["content"] for m in a_history.json()["messages"]] == ["Private message from A"]
     assert [m["content"] for m in b_history.json()["messages"]] == ["Private message from B"]
+
+
+
+def test_registration_is_globally_rate_limited(client, monkeypatch):
+    monkeypatch.setattr(api_module, "AUTH_REGISTER_GLOBAL_LIMIT", 1)
+    first = client.post("/auth/register", json={
+        "email": "first@example.com", "password": "correct-horse-battery"
+    })
+    blocked = client.post("/auth/register", json={
+        "email": "second@example.com", "password": "correct-horse-battery"
+    })
+    assert first.status_code == 200
+    assert blocked.status_code == 429
+    assert int(blocked.headers["retry-after"]) > 0
+
+
+def test_login_is_rate_limited_per_email(client, monkeypatch):
+    register(client, "limited@example.com")
+    monkeypatch.setattr(api_module, "AUTH_LOGIN_EMAIL_LIMIT", 1)
+    payload = {"email": "limited@example.com", "password": "correct-horse-battery"}
+
+    first = client.post("/auth/login", json=payload)
+    blocked = client.post("/auth/login", json=payload)
+
+    assert first.status_code == 200
+    assert blocked.status_code == 429
+    assert blocked.json()["detail"] == "Too many requests. Try again later."
+
+
+def test_chat_is_rate_limited_per_account(client, monkeypatch):
+    account_a = register(client, "chat-limit-a@example.com")
+    account_b = register(client, "chat-limit-b@example.com")
+    monkeypatch.setattr(api_module, "CHAT_ACCOUNT_MINUTE_LIMIT", 1)
+
+    first = client.post("/chat", headers=headers(account_a["session"]), json={"message": "A1"})
+    blocked = client.post("/chat", headers=headers(account_a["session"]), json={"message": "A2"})
+    other_account = client.post("/chat", headers=headers(account_b["session"]), json={"message": "B1"})
+
+    assert first.status_code == 200
+    assert blocked.status_code == 429
+    assert other_account.status_code == 200
+
+
+def test_account_routes_fail_closed_without_rate_limit_secret(client, monkeypatch):
+    monkeypatch.delenv("GAIA_RATE_LIMIT_SECRET")
+    response = client.post("/auth/register", json={
+        "email": "no-secret@example.com", "password": "correct-horse-battery"
+    })
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Server rate limiting is not configured."
