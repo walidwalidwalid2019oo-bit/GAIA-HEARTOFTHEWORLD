@@ -21,5 +21,7 @@ services:
         generateValue: true
       - key: GAIA_ALLOW_SHARED_TOKEN
         value: "false"
+      - key: GAIA_RATE_LIMIT_SECRET
+        generateValue: true
       - key: GAIA_TIMEOUT_SECONDS
         value: "60"
