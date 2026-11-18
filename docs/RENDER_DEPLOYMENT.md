@@ -49,8 +49,9 @@ short-lived database for long-term personal memory.
    verify backups and restore before using non-disposable data.
 4. Set `GAIA_CORS_ORIGINS` to exact trusted website origins only. Do not use
    wildcards for authenticated APIs.
-5. Keep `GAIA_API_TOKEN` private and development-only until per-user auth is
-   implemented. Never embed it in website code or a distributed app.
+5. Keep `GAIA_ALLOW_SHARED_TOKEN=false` for account-based staging. The legacy
+   `GAIA_API_TOKEN` is not needed for normal account sessions; never embed it
+   in website code or a distributed app.
 6. Confirm `GET /health` reports the selected database backend and readiness.
 7. Test authenticated requests with disposable content, then inspect logs.
 
@@ -63,7 +64,8 @@ short-lived database for long-term personal memory.
 - [x] SQLAlchemy adapter supports SQLite and PostgreSQL for conversation history, explicit facts, and approval records.
 - [ ] Durable PostgreSQL provider selected, provisioned, configured, and backup/restore verified.
 - [ ] Existing SQLite data explicitly migrated (no automatic migration is performed).
-- [ ] Per-user authentication implemented.
+- [x] Development email/password sessions and owner-scoped API routes implemented in the account feature branch.
+- [ ] Refresh-token rotation, recovery, and full authentication hardening.
 - [x] Initial persistent registration, login, and per-account chat limits implemented in the private feature branch.
 - [ ] Trusted per-IP limits and adaptive abuse controls configured and tested.
 - [ ] PostgreSQL rate-limit concurrency tested against the selected durable database.
