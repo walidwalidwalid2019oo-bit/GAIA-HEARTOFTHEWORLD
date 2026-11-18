@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 import backend.main as api_module
 from gaia.ai.memory import ConversationMemory
+from gaia.assistant.rate_limit import PersistentRateLimiter
 from gaia.ai.provider import ProviderError
 
 
@@ -42,7 +43,9 @@ def api_client(monkeypatch, tmp_path):
     monkeypatch.setenv("GAIA_ALLOW_SHARED_TOKEN", "true")
     fake = FakeAI()
     fake.memory = ConversationMemory(tmp_path / "gaia-test.sqlite3")
+    monkeypatch.setenv("GAIA_RATE_LIMIT_SECRET", "test-rate-limit-secret-" + ("x" * 32))
     monkeypatch.setattr(api_module, "ai", fake)
+    monkeypatch.setattr(api_module, "rate_limiter", PersistentRateLimiter(engine=fake.memory.engine))
     with TestClient(api_module.app) as client:
         yield client, fake
 
