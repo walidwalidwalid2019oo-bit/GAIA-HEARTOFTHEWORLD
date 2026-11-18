@@ -15,7 +15,7 @@
   persistent browser storage.
 - Persistent fixed-window counters protect registration, login, and per-account
   chat. Only HMAC digests are stored, not raw email addresses or account IDs.
-- Account/chat endpoints fail closed with HTTP 503 if
+- Registration, login, and chat fail closed with HTTP 503 if
   `GAIA_RATE_LIMIT_SECRET` is missing or is still a placeholder.
 
 Routes: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`,
