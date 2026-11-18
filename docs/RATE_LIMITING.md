@@ -18,7 +18,7 @@ is not a declaration that account registration is safe for public use.
 
 Limits are enforced before password hashing or provider calls. Rejected requests
 receive HTTP 429 and a `Retry-After` header. Missing or placeholder rate-limit
-configuration fails closed with HTTP 503 on account and chat endpoints.
+configuration fails closed with HTTP 503 on registration, login, and chat.
 
 ## Storage and privacy
 
