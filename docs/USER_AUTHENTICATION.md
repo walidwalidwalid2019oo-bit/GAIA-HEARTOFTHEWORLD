@@ -13,13 +13,19 @@
   `GAIA_ALLOW_SHARED_TOKEN=true` is explicitly set.
 - The access preview keeps the session token in page memory rather than
   persistent browser storage.
+- Persistent fixed-window counters protect registration, login, and per-account
+  chat. Only HMAC digests are stored, not raw email addresses or account IDs.
+- Account/chat endpoints fail closed with HTTP 503 if
+  `GAIA_RATE_LIMIT_SECRET` is missing or is still a placeholder.
 
 Routes: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`,
 and `POST /auth/logout`.
 
 ## Still required before public multi-user deployment
 
-1. Persistent rate limits for registration, login, and expensive AI requests.
+1. Trusted per-IP limits at the reverse-proxy boundary, plus CAPTCHA or other
+   adaptive controls where justified. Do not trust arbitrary `X-Forwarded-For`
+   values; configure and test the proxy trust boundary first.
 2. Refresh-token rotation, revocation, and reuse detection.
 3. Email verification and secure account recovery.
 4. Google and GitHub OAuth with server-side secrets, exact redirect validation,
@@ -45,6 +51,25 @@ The shared token is off by default. If a private developer needs it temporarily,
 set `GAIA_ALLOW_SHARED_TOKEN=true` on the backend. Never embed the shared token
 in website JavaScript, a mobile app, or a distributed client.
 
-This implementation is not production-ready. In particular, do not expose
-account registration publicly until persistent rate limiting, recovery,
-OAuth decisions, and the remaining controls above are complete.
+## Current rate-limit policy (private development)
+
+- Registration: 20 requests per hour globally and 5 per hour per normalized
+  email address.
+- Login: 120 requests per minute globally and 10 per 15 minutes per normalized
+  email address.
+- Chat: 30 requests per minute and 200 per day per account.
+- Rejections return HTTP 429 with a `Retry-After` header.
+- Counters use atomic SQLite/PostgreSQL upserts and are shared only when all
+  backend instances use the same durable database and the same private
+  `GAIA_RATE_LIMIT_SECRET` (at least 32 random bytes).
+- No client IP is currently used. This avoids trusting spoofable forwarding
+  headers or accidentally treating every visitor behind an unconfigured proxy
+  as one person. Per-IP enforcement is still required before public access.
+- The shared development token maps all callers to one development owner and
+  therefore one chat bucket; it remains disabled unless explicitly enabled.
+
+This is an initial abuse-control layer, not a complete public-service defense.
+Do not expose account registration publicly until trusted per-IP controls,
+refresh/recovery, OAuth decisions, operational monitoring, and the remaining
+security review are complete. PostgreSQL rate-limit behavior still needs a
+live integration test against the selected durable database.
