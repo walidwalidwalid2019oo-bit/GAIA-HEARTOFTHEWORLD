@@ -120,3 +120,24 @@ def test_rate_limit_rejects_invalid_bounds(tmp_path, limit, window):
             limit=limit, window_seconds=window, secret=SECRET,
         )
     engine.dispose()
+
+
+def test_expired_fixed_window_buckets_are_cleaned(tmp_path):
+    engine = create_database_engine(tmp_path / "cleanup.sqlite3")
+    limiter = PersistentRateLimiter(engine=engine)
+    limiter.consume(
+        "auth:login:email", "old@example.com",
+        limit=5, window_seconds=60, secret=SECRET, now=1000,
+    )
+    limiter.consume(
+        "auth:login:email", "new@example.com",
+        limit=5, window_seconds=60, secret=SECRET, now=1060,
+    )
+
+    with engine.connect() as db:
+        count = db.execute(
+            text("SELECT COUNT(*) FROM rate_limit_buckets")
+        ).scalar_one()
+
+    assert count == 1
+    engine.dispose()
