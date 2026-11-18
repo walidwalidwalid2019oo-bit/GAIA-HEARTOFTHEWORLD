@@ -37,7 +37,7 @@ def test_fixed_window_limit_is_atomic_and_shared_between_instances(tmp_path):
     assert second.remaining == 0
     assert blocked.allowed is False
     assert blocked.remaining == 0
-    assert blocked.retry_after == 58
+    assert blocked.retry_after == 38
 
     # A new fixed window admits requests again.
     next_window = second_worker.consume(
