@@ -176,3 +176,11 @@ def test_invalid_blank_email_is_rejected_without_bypassing_rate_limiter(client):
     })
     assert response.status_code == 400
     assert response.json()["detail"] == "Enter a valid email address."
+
+
+def test_invalid_blank_login_email_returns_generic_auth_failure(client):
+    response = client.post("/auth/login", json={
+        "email": "   ", "password": "correct-horse-battery"
+    })
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Email or password is incorrect."
