@@ -108,7 +108,7 @@ def _enforce_rate_limit(
             identity,
             limit=limit,
             window_seconds=window_seconds,
-            secret=os.getenv("GAIA_RATE_LIMIT_SECRET", ""),
+            secret=os.getenv("GAIA_RATE_LIMIT_SECRET", "").strip(),
         )
     except RateLimitConfigurationError as exc:
         raise HTTPException(
