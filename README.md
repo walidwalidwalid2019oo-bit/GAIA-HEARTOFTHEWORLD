@@ -40,6 +40,7 @@ A separate FastAPI backend includes:
 - A read-only website backend health check with no embedded API secret
 - Email/password registration, login, logout, and expiring account sessions
 - Per-account conversation and saved-memory ownership checks
+- Persistent database-backed limits for registration, login, and per-account AI requests
 - Backend-only provider credentials
 - Account bearer sessions for chat and private memory endpoints; optional shared token is development-only
 - Automated tests for API routes, specialist routing, SQLite persistence, policy decisions, and provider failures
@@ -48,7 +49,7 @@ The specialists are selectable prompt perspectives within one configured model; 
 
 ### Run locally
 
-Install dependencies, copy `.env.example` to a private `.env`, and configure `GAIA_API_KEY`, `GAIA_MODEL`, and a random `GAIA_API_TOKEN` (at least 32 characters). Generate a token with:
+Install dependencies, copy `.env.example` to a private `.env`, and configure `GAIA_API_KEY`, `GAIA_MODEL`, and `GAIA_RATE_LIMIT_SECRET` (at least 32 random bytes). The legacy `GAIA_API_TOKEN` is only needed if you deliberately enable `GAIA_ALLOW_SHARED_TOKEN=true` for private development. Generate a secret with:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
@@ -63,7 +64,7 @@ uvicorn backend.main:app --host 127.0.0.1 --port 8000
 
 Open `website/access.html` for the account-first access preview. See [ACCOUNT_AND_PERMISSIONS.md](docs/ACCOUNT_AND_PERMISSIONS.md) for the onboarding, memory, and device-permission boundaries. See [ARCHITECTURE.md](ARCHITECTURE.md) for setup, API routes, tests, and security boundaries. See [ASSISTANT_FOUNDATIONS.md](docs/ASSISTANT_FOUNDATIONS.md) for the memory and action-policy design, and [USER_AUTHENTICATION.md](docs/USER_AUTHENTICATION.md) for the per-user security implementation plan.
 
-The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. PostgreSQL support is implemented but no hosted database is provisioned or backup/restore tested. Conversation and saved-fact storage now support owner filters, and legacy rows with no owner are hidden by default. Email/password account routes are now wired to the API, and the new `website/access.html` screen can sign in, create an account, and manage explicit saved facts. Its session token is held in page memory rather than persistent browser storage. Google/GitHub OAuth is not implemented yet; those buttons are intentionally disabled. The web preview can request browser notifications only after a click; native phone-call and SMS permissions are not available in a website. Authentication still needs persistent rate limiting, refresh-token rotation, email verification/recovery, and a security review before public access. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
+The backend applies database-backed fixed-window limits to registration, login, and per-account chat. Counters store HMAC digests rather than raw email addresses or account IDs; the same private `GAIA_RATE_LIMIT_SECRET` and shared database must be used by every backend instance. Per-IP limits are not enabled until trusted reverse-proxy handling is explicitly configured. The provider adapter is tested with mocked responses, but a live provider request has **not** been verified. PostgreSQL support is implemented but no hosted database is provisioned or backup/restore tested. Conversation and saved-fact storage now support owner filters, and legacy rows with no owner are hidden by default. Email/password account routes are now wired to the API, and the new `website/access.html` screen can sign in, create an account, and manage explicit saved facts. Its session token is held in page memory rather than persistent browser storage. Google/GitHub OAuth is not implemented yet; those buttons are intentionally disabled. The web preview can request browser notifications only after a click; native phone-call and SMS permissions are not available in a website. Authentication still needs trusted per-IP abuse controls, refresh-token rotation, email verification/recovery, and a security review before public access. The backend is not deployed and is not ready for public multi-user access. Do not put real credentials in GitHub, the Android app, or browser code.
 
 ### Hosting preparation (staging only)
 
