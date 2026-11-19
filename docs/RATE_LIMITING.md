@@ -44,11 +44,28 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 Do not commit the generated value. The Render blueprint requests a generated
 secret, but this file does not prove that a service has been deployed.
 
+## Verification
+
+- The default test suite exercises SQLite behavior.
+- GitHub Actions now starts an isolated PostgreSQL 16 service and runs
+  `tests/test_rate_limit_postgres.py` separately.
+- The PostgreSQL integration test creates multiple limiter instances to model
+  separate workers, submits concurrent requests for one account/window, and
+  verifies that exactly the configured number are admitted and that a newly
+  created worker observes the persisted counter.
+- To run the integration test locally, set `GAIA_POSTGRES_TEST_URL` to a
+  disposable PostgreSQL test database URL. The test uses that URL through
+  GAIA's normal `GAIA_DATABASE_URL` engine configuration. It does not drop
+  tables or reset the database; use a dedicated disposable database.
+- Passing this CI test verifies the PostgreSQL 16 rate-limit path under this
+  test workload. It does not verify hosted-database backups, failover,
+  connection limits, or the eventual production database provider.
+
 ## Important limits
 
 - Per-IP enforcement is not enabled yet. GAIA deliberately does not trust
-  arbitrary `X-Forwarded-For` values. Before adding IP limits, configure the
-  exact trusted reverse-proxy boundary and test it; otherwise all visitors
+  arbitrary `X-Forwarded-For` values. Before adding IP limits, configure
+  the exact trusted reverse-proxy boundary and test it; otherwise all visitors
   behind a proxy may appear as one address or attackers may spoof identities.
 - Global registration/login buckets are coarse emergency caps, not a
   substitute for per-IP limits, email verification, CAPTCHA/adaptive controls,
@@ -58,8 +75,6 @@ secret, but this file does not prove that a service has been deployed.
 - SQLite on an ephemeral host is not durable or shared across independent
   instances. Configure a durable PostgreSQL database before relying on limits
   across restarts or replicas.
-- The automated tests exercise SQLite. PostgreSQL concurrency and failover
-  behavior must be integration-tested against the actual selected database.
 - Fixed windows can allow a burst at a window boundary. Consider a token-bucket
   or sliding-window policy after observing staging traffic.
 
