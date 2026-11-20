@@ -40,7 +40,7 @@ jobs:
             fi
           done
 
-  postgres-rate-limit-integration:
+  postgres-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -69,5 +69,5 @@ jobs:
           cache: "pip"
       - name: Install test dependencies
         run: pip install -r requirements-dev.txt
-      - name: Test PostgreSQL rate-limit concurrency
-        run: python -m pytest -q tests/test_rate_limit_postgres.py
+      - name: Test PostgreSQL persistence, isolation, and rate limits
+        run: python -m pytest -q tests/test_rate_limit_postgres.py tests/test_postgres_account_storage.py
