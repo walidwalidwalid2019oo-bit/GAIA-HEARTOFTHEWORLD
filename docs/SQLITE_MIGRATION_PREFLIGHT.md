@@ -26,12 +26,12 @@ The report never includes row contents, email addresses, password hashes, sessio
 ## Read-only guarantees and constraints
 
 - Opens SQLite with mode=ro and immutable=1, and enables query_only.
-- Refuses to inspect a source while -wal, -shm, or -journal sidecars exist. This avoids silently ignoring uncheckpointed WAL data or creating sidecars while inspecting.
+- Refuses to inspect a source while -wal, -shm, or -journal sidecars exist. It checks again after the read and rejects the report if a sidecar appears during inspection, because immutable=1 deliberately ignores WAL files.
 - Checks file size, modification time, and inode before and after inspection.
 - Performs only schema queries, aggregate counts, and integrity checks.
 - Does not create a destination, write a migration manifest, or change owner_id values.
 
-Close the application that owns the database and make a separate copy before running the tool. If the database has journal sidecars, do not delete them manually. Use the database application's normal shutdown/checkpoint process, then make a fresh copy.
+Close the application that owns the database and make a separate copy before running the tool. If the database has journal sidecars, do not delete them manually. Use the database application's normal shutdown/checkpoint process, then make a fresh copy. The pre/post checks reduce race risk but do not replace the requirement to use a closed, stable copy.
 
 ## Recognized current tables
 
