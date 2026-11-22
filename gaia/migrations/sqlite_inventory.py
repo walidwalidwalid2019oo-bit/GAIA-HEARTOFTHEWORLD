@@ -34,19 +34,27 @@ def _file_signature(path: Path) -> tuple[int, int, int]:
     return stat.st_size, stat.st_mtime_ns, getattr(stat, "st_ino", 0)
 
 
+def _existing_sidecars(path: Path) -> list[str]:
+    """Return journal sidecar names without exposing the source directory."""
+    return [
+        Path(str(path) + suffix).name
+        for suffix in _SIDECAR_SUFFIXES
+        if Path(str(path) + suffix).exists()
+    ]
+
+
 def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
     """Inventory schema and counts without modifying or exposing source rows.
 
     The database must be closed and checkpointed. WAL/shared-memory/rollback
-    journal sidecars are rejected so the immutable read-only connection cannot
-    silently omit committed WAL data or create sidecar files.
+    journal sidecars are rejected before and after inspection so the immutable
+    read-only connection cannot silently omit committed WAL data.
     """
     path = Path(source).expanduser().resolve(strict=True)
     if not path.is_file():
         raise ValueError("SQLite source must be a regular file.")
 
-    sidecars = [Path(str(path) + suffix).name for suffix in _SIDECAR_SUFFIXES
-                if Path(str(path) + suffix).exists()]
+    sidecars = _existing_sidecars(path)
     if sidecars:
         raise RuntimeError(
             "SQLite source has journal sidecars; close the application and "
@@ -131,6 +139,15 @@ def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
         user_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
     finally:
         connection.close()
+
+    # immutable=1 deliberately ignores WAL files. Recheck after the read so a
+    # sidecar appearing during inspection cannot produce a misleading report.
+    sidecars_after = _existing_sidecars(path)
+    if sidecars_after:
+        raise RuntimeError(
+            "SQLite source gained journal sidecars during inspection; discard "
+            "the report and retry with a closed, checkpointed copy."
+        )
 
     after = _file_signature(path)
     if before != after:
