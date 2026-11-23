@@ -43,6 +43,60 @@ def _existing_sidecars(path: Path) -> list[str]:
     ]
 
 
+def _collect_schema_objects(
+    connection: sqlite3.Connection,
+    schema_rows: list[sqlite3.Row],
+) -> list[dict[str, Any]]:
+    """Collect structural metadata for custom indexes, views, and triggers.
+
+    SQL definitions and expression bodies are deliberately not returned because
+    schema SQL can contain developer-supplied literals. Index metadata reports
+    only uniqueness, origin, partial status, and named/expression columns.
+    """
+    objects: list[dict[str, Any]] = []
+    for row in schema_rows:
+        object_type = str(row["type"])
+        if object_type not in {"index", "view", "trigger"}:
+            continue
+
+        item: dict[str, Any] = {
+            "type": object_type,
+            "name": str(row["name"]),
+            "table_name": str(row["tbl_name"]),
+        }
+        if object_type == "index":
+            table_name = str(row["tbl_name"])
+            index_name = str(row["name"])
+            index_rows = connection.execute(
+                f"PRAGMA index_list({_quote_identifier(table_name)})"
+            ).fetchall()
+            metadata = next(
+                (candidate for candidate in index_rows if candidate["name"] == index_name),
+                None,
+            )
+            if metadata is None:
+                item["index_metadata_available"] = False
+            else:
+                column_rows = connection.execute(
+                    f"PRAGMA index_info({_quote_identifier(index_name)})"
+                ).fetchall()
+                item["index"] = {
+                    "unique": bool(metadata["unique"]),
+                    "origin": str(metadata["origin"]),
+                    "partial": bool(metadata["partial"]),
+                    "columns": [
+                        {
+                            "sequence": int(column["seqno"]),
+                            "name": column["name"],
+                            "expression": column["name"] is None,
+                        }
+                        for column in column_rows
+                    ],
+                }
+        objects.append(item)
+    return objects
+
+
 def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
     """Inventory schema and counts without modifying or exposing source rows.
 
@@ -82,6 +136,7 @@ def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
         )
         schema_digest = hashlib.sha256(schema_material.encode("utf-8")).hexdigest()
 
+        schema_objects = _collect_schema_objects(connection, schema_rows)
         table_names = [
             row["name"] for row in connection.execute(
                 "SELECT name FROM sqlite_master "
@@ -156,6 +211,14 @@ def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
         )
 
     unsupported_tables = sorted(set(table_names) - _KNOWN_TABLES)
+    unsupported_schema_objects = [
+        {
+            "type": item["type"],
+            "name": item["name"],
+            "table_name": item["table_name"],
+        }
+        for item in schema_objects
+    ]
     warnings: list[str] = []
     if quick_check != ["ok"]:
         warnings.append("SQLite quick_check reported integrity problems.")
@@ -163,6 +226,10 @@ def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
         warnings.append("SQLite foreign_key_check reported violations (up to 20 shown).")
     if unsupported_tables:
         warnings.append("Unrecognized tables require manual migration review.")
+    if unsupported_schema_objects:
+        warnings.append(
+            "Custom indexes, views, and triggers require manual migration review."
+        )
 
     return {
         "format_version": 1,
@@ -174,7 +241,9 @@ def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
         "foreign_key_violation_count_sampled": len(foreign_key_samples),
         "foreign_key_violation_samples": foreign_key_samples,
         "tables": tables,
+        "schema_objects": schema_objects,
         "unsupported_tables": unsupported_tables,
+        "unsupported_schema_objects": unsupported_schema_objects,
         "warnings": warnings,
         "status": "review_required" if warnings else "preflight_complete",
         "data_contents_exported": False,

@@ -18,10 +18,11 @@ The command prints a JSON inventory. A non-zero exit status means the inventory 
 - SQLite user_version and a SHA-256 digest of schema definitions only.
 - Table names, column names/types, and row counts.
 - Assigned and unassigned (owner_id IS NULL) row counts for owner-scoped tables.
+- Structural metadata for custom indexes, views, and triggers.
 - SQLite quick_check and up to 20 foreign-key violation samples.
 - Tables not yet recognized by GAIA's migration allowlist.
 
-The report never includes row contents, email addresses, password hashes, session tokens, message text, memory facts, or provider credentials. schema_sha256 is not a checksum of table data and must not be described as one.
+The report never includes row contents, email addresses, password hashes, session tokens, message text, memory facts, provider credentials, or raw schema SQL. Index metadata includes uniqueness, origin, partial-index status, and column names; expression-index entries are marked without returning their SQL expression. schema_sha256 is not a checksum of table data and must not be described as one.
 
 ## Read-only guarantees and constraints
 
@@ -44,10 +45,18 @@ Close the application that owns the database and make a separate copy before run
 
 Any other user table is reported as unsupported and requires explicit schema review. A missing recognized table is not automatically an error because some components may not have been initialized in a local database.
 
+## Schema-object handling
+
+Custom indexes, views, and triggers are listed in schema_objects and also appear in unsupported_schema_objects. This intentionally makes the preflight status review_required when any are present: the current migration tool does not recreate these objects automatically.
+
+For indexes, the inventory reports uniqueness, SQLite origin, whether the index is partial, and the ordered named columns. Expression-index columns are identified without exposing their SQL expressions. For views and triggers, only the object type, name, and associated table name are returned. Raw CREATE statements are never included because schema SQL can contain developer-supplied literals.
+
+A future migration allowlist must explicitly approve and recreate each required object, then compare its behavior in disposable SQLite and PostgreSQL databases. An inventory entry is not migration approval.
+
 ## What this does not do
 
-This is not a data migration, backup, restore, or complete dry-run. It does not compare source and destination rows, compute row-content checksums, transform timestamps/identity columns, migrate indexes/constraints, or reassign legacy records with NULL owners. The schema digest only fingerprints SQLite schema definitions.
+This is not a data migration, backup, restore, or complete dry-run. It does not connect to PostgreSQL, export or import records, compare source and destination rows, compute row-content checksums, transform timestamps/identity columns, recreate indexes/views/triggers, or reassign legacy records with NULL owners. The schema digest only fingerprints SQLite schema definitions.
 
-A later migration milestone must define a reviewed table/column allowlist, safe type conversion, keyed integrity checks that do not expose personal data, destination-side validation, idempotency, rollback, and explicit owner mapping. No real database should be migrated until the owner approves the destination and a separate backup/restore test has passed.
+A later migration milestone must define a reviewed table/column/object allowlist, safe type conversion, keyed integrity checks that do not expose personal data, destination-side validation, idempotency, rollback, and explicit owner mapping. No real database should be migrated until the owner approves the destination and a separate backup/restore test has passed.
 
 GAIA remains private development. Public release is forbidden before V19.
