@@ -37,17 +37,13 @@ def test_inventory_lists_custom_schema_objects_without_emitting_sql(tmp_path):
         (item["type"], item["name"]): item
         for item in report["schema_objects"]
     }
-
-    assert report["status"] == "review_required"
-    assert set(report["unsupported_schema_objects"]) == {
-        ("index", "idx_messages_owner_role"),
-        ("index", "idx_messages_role_lower"),
-        ("view", "message_totals"),
-        ("trigger", "messages_after_insert"),
-    } or {
+    unsupported = {
         (item["type"], item["name"])
         for item in report["unsupported_schema_objects"]
-    } == {
+    }
+
+    assert report["status"] == "review_required"
+    assert unsupported == {
         ("index", "idx_messages_owner_role"),
         ("index", "idx_messages_role_lower"),
         ("view", "message_totals"),
@@ -76,4 +72,7 @@ def test_inventory_lists_custom_schema_objects_without_emitting_sql(tmp_path):
     assert "private-trigger-literal" not in rendered
     assert "CREATE TRIGGER" not in rendered
     assert "CREATE VIEW" not in rendered
-    assert "Custom indexes, views, and triggers require manual migration review." in report["warnings"]
+    assert (
+        "Custom indexes, views, and triggers require manual migration review."
+        in report["warnings"]
+    )
