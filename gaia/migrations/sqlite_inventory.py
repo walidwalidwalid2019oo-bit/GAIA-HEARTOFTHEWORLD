@@ -97,6 +97,97 @@ def _collect_schema_objects(
     return objects
 
 
+def _collect_table_details(
+    connection: sqlite3.Connection,
+    table_name: str,
+    table_list: dict[str, sqlite3.Row],
+) -> dict[str, Any]:
+    """Describe constraints and table features without exposing SQL literals."""
+    quoted = _quote_identifier(table_name)
+    column_rows = connection.execute(f"PRAGMA table_xinfo({quoted})").fetchall()
+    columns: list[dict[str, Any]] = []
+    for row in column_rows:
+        hidden = int(row["hidden"])
+        columns.append({
+            "name": row["name"],
+            "type": row["type"] or "",
+            "not_null": bool(row["notnull"]),
+            "primary_key_position": int(row["pk"]),
+            "has_default": row["dflt_value"] is not None,
+            "hidden_code": hidden,
+            "generated_kind": (
+                "virtual" if hidden == 2 else
+                "stored" if hidden == 3 else
+                None
+            ),
+        })
+
+    indexes: list[dict[str, Any]] = []
+    for metadata in connection.execute(f"PRAGMA index_list({quoted})").fetchall():
+        index_name = str(metadata["name"])
+        index_columns = connection.execute(
+            f"PRAGMA index_xinfo({_quote_identifier(index_name)})"
+        ).fetchall()
+        indexes.append({
+            "name": index_name,
+            "unique": bool(metadata["unique"]),
+            "origin": str(metadata["origin"]),
+            "partial": bool(metadata["partial"]),
+            "columns": [
+                {
+                    "sequence": int(column["seqno"]),
+                    "name": column["name"],
+                    "expression": int(column["cid"]) == -2,
+                    "descending": bool(column["desc"]),
+                    "collation": column["coll"],
+                }
+                for column in index_columns
+                if bool(column["key"])
+            ],
+        })
+
+    foreign_keys = [
+        {
+            "id": int(row["id"]),
+            "sequence": int(row["seq"]),
+            "referenced_table": row["table"],
+            "from_column": row["from"],
+            "to_column": row["to"],
+            "on_update": str(row["on_update"]),
+            "on_delete": str(row["on_delete"]),
+            "match": str(row["match"]),
+        }
+        for row in connection.execute(f"PRAGMA foreign_key_list({quoted})").fetchall()
+    ]
+
+    table_metadata = table_list.get(table_name)
+    return {
+        "columns": columns,
+        "primary_key_columns": [
+            column["name"]
+            for column in sorted(
+                (item for item in columns if item["primary_key_position"]),
+                key=lambda item: item["primary_key_position"],
+            )
+        ],
+        # Includes SQLite autoindexes for PRIMARY KEY and UNIQUE constraints,
+        # as well as custom indexes. This is distinct from schema_objects,
+        # which lists only user-defined schema objects.
+        "indexes": indexes,
+        "foreign_keys": foreign_keys,
+        "table_options": {
+            "without_rowid": bool(table_metadata["wr"]) if table_metadata else None,
+            "strict": bool(table_metadata["strict"]) if table_metadata else None,
+        },
+        # SQLite exposes CHECK clauses only in CREATE TABLE SQL. We intentionally
+        # do not parse or return that SQL, so every table needs manual review.
+        "check_constraints": {
+            "status": "not_introspected",
+            "requires_manual_review": True,
+        },
+    }
+
+
 def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
     """Inventory schema and counts without modifying or exposing source rows.
 
@@ -124,7 +215,7 @@ def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
 
         schema_rows = connection.execute(
             """
-            SELECT type, name, tbl_name, COALESCE(sql, '')
+            SELECT type, name, tbl_name, COALESCE(sql, '') AS schema_sql
             FROM sqlite_master
             WHERE type IN ('table', 'index', 'view', 'trigger')
               AND name NOT LIKE 'sqlite_%'
@@ -143,30 +234,24 @@ def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
                 "WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
             )
         ]
+        table_list = {
+            row["name"]: row
+            for row in connection.execute("PRAGMA table_list").fetchall()
+            if row["schema"] == "main"
+        }
         tables: list[dict[str, Any]] = []
         for table_name in table_names:
             quoted = _quote_identifier(table_name)
-            column_rows = connection.execute(
-                f"PRAGMA table_info({quoted})"
-            ).fetchall()
-            columns = [
-                {
-                    "name": row["name"],
-                    "type": row["type"] or "",
-                    "not_null": bool(row["notnull"]),
-                    "primary_key_position": int(row["pk"]),
-                }
-                for row in column_rows
-            ]
+            details = _collect_table_details(connection, table_name, table_list)
             row_count = int(
                 connection.execute(f"SELECT COUNT(*) FROM {quoted}").fetchone()[0]
             )
             table_report: dict[str, Any] = {
                 "name": table_name,
                 "row_count": row_count,
-                "columns": columns,
+                **details,
             }
-            column_names = {column["name"] for column in columns}
+            column_names = {column["name"] for column in details["columns"]}
             if "owner_id" in column_names:
                 table_report["ownership"] = {
                     "assigned_owner_rows": int(connection.execute(
@@ -230,9 +315,13 @@ def inspect_sqlite_database(source: str | Path) -> dict[str, Any]:
         warnings.append(
             "Custom indexes, views, and triggers require manual migration review."
         )
+    if tables:
+        warnings.append(
+            "CHECK constraints are not parsed by preflight; review each table definition manually."
+        )
 
     return {
-        "format_version": 1,
+        "format_version": 2,
         "source_name": path.name,
         "source_size_bytes": before[0],
         "sqlite_user_version": user_version,
